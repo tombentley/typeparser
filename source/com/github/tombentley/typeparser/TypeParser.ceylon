@@ -17,7 +17,7 @@ import ceylon.language.meta.model {
 
 
 
-class TypeParser(String input) {
+class TypeParser() {
     /*
      
      input ::= intersectionType ;
@@ -31,12 +31,11 @@ class TypeParser(String input) {
      
      */
     
-    value tokenizer = Tokenizer(input);
-    
     """input ::= intersectionType ;"""
-    shared Type<>|ParseError parse() {
+    shared Type<>|ParseError parse(String input) {
         try {
-            value result = intersectionType();
+            value tokenizer = Tokenizer(input);
+            value result = intersectionType(tokenizer);
             tokenizer.expect(dtEoi);
             return result;
         } catch (ParseError e) {
@@ -45,39 +44,39 @@ class TypeParser(String input) {
     }
     
     """intersectionType ::= unionType ('&' intersectionType) ;"""
-    Type<> intersectionType() {
-        variable Type<> result = unionType();
+    Type<> intersectionType(Tokenizer tokenizer) {
+        variable Type<> result = unionType(tokenizer);
         if (tokenizer.isType(dtAnd)) {
-            Type<> u2 = unionType();
+            Type<> u2 = unionType(tokenizer);
             result = result.intersection(u2);
         }
         return result;
     }
     
     """unionType ::= simpleType ('|' intersectionType) ;"""
-    Type<> unionType() {
-        variable Type<> result = simpleType();
+    Type<> unionType(Tokenizer tokenizer) {
+        variable Type<> result = simpleType(tokenizer);
         if (tokenizer.isType(dtOr)) {
-            Type<> u2 = intersectionType();
+            Type<> u2 = intersectionType(tokenizer);
             result = result.union(u2);
         }
         return result;
     }
     
     """simpleType ::= declaration typeArguments? ('.' typeName typeArguments?)* ;"""
-    Type<> simpleType() {
-        value d = declaration();
+    Type<> simpleType(Tokenizer tokenizer) {
+        value d = declaration(tokenizer);
         Type<>[] ta;
         if (tokenizer.current.type == dtLt) {
-            ta = typeArguments();
+            ta = typeArguments(tokenizer);
         } else {
             ta = [];
         }
         if (is ClassOrInterfaceDeclaration d) {
             variable ClassOrInterface<> x = d.apply<Anything>(*ta);
             while (tokenizer.isType(dtDot)) {
-                value mt = typeName();
-                value mta = typeArguments();
+                value mt = typeName(tokenizer);
+                value mta = typeArguments(tokenizer);
                 if (is ClassModel<>|InterfaceModel<> k = x.getClassOrInterface(mt, *mta)) {
                     x = k;
                 } else {
@@ -95,10 +94,10 @@ class TypeParser(String input) {
     }
     
     """declaration ::= packageName '::' typeName ;"""
-    Type<>|ClassOrInterfaceDeclaration declaration() {
-        Package p = packageName();
+    Type<>|ClassOrInterfaceDeclaration declaration(Tokenizer tokenizer) {
+        Package p = packageName(tokenizer);
         tokenizer.expect(dtDColon);
-        value t = typeName();
+        value t = typeName(tokenizer);
         if (exists r = p.getClassOrInterface(t)) {
             return r;
         } else if (exists f=t.first,
@@ -116,11 +115,11 @@ class TypeParser(String input) {
     }
     
     """typeArgments := '<' intersectionType (',' intersectionType)* '>';"""
-    Type<>[] typeArguments() {
+    Type<>[] typeArguments(Tokenizer tokenizer) {
         tokenizer.expect(dtLt);
         variable Type<>[] result = [];
         while(true) {
-            value t = intersectionType();
+            value t = intersectionType(tokenizer);
             result = result.withTrailing(t);
             if (!tokenizer.isType(dtComma)) {
                 break;
@@ -131,22 +130,22 @@ class TypeParser(String input) {
     }
     
     """typeName ::= uident;"""
-    String typeName() {
+    String typeName(Tokenizer tokenizer) {
         if (tokenizer.current.type == dtUpper
             ||tokenizer.current.type == dtLower) {
             return tokenizer.consume();
         } else {
-            throw ParseError("unexpected token: expected ``dtUpper`` or ``dtLower``, found ``tokenizer.current``: ``input``");
+            throw ParseError("unexpected token: expected ``dtUpper`` or ``dtLower``, found ``tokenizer.current``: ``tokenizer.input``");
         }
         //return tokenizer.expect(dtUpper);
     }
     
     """packageName ::= lident (. lident)* ;"""
-    Package packageName() {
+    Package packageName(Tokenizer tokenizer) {
         variable String mname = "";
         variable Integer start = tokenizer.index;
         variable Module? mod = null;
-        lident();
+        lident(tokenizer);
         while (true) {
             if (!mod exists) {
                 mname = tokenizer.input.measure(start, tokenizer.index-start);
@@ -161,7 +160,7 @@ class TypeParser(String input) {
             if (!tokenizer.isType(dtDot)) {
                 break;
             }
-            lident();
+            lident(tokenizer);
         }
         if (exists m=mod) {
             value pname = tokenizer.input.measure(start, tokenizer.index-start);
@@ -175,7 +174,7 @@ class TypeParser(String input) {
         }
     }
     
-    String? uident() {
+    String? uident(Tokenizer tokenizer) {
         if (tokenizer.current.type == dtUpper) {
             value result = tokenizer.current.token;
             tokenizer.consume();
@@ -184,7 +183,7 @@ class TypeParser(String input) {
             return null;
         }
     }
-    String? lident() {
+    String? lident(Tokenizer tokenizer) {
         if (tokenizer.current.type == dtLower) {
             value result = tokenizer.current.token;
             tokenizer.consume();
@@ -211,4 +210,4 @@ class TypeParser(String input) {
    
    """
 see(`function parseModel`)
-shared Type<>|ParseError parseType(String t) => TypeParser(t).parse();
+shared Type<>|ParseError parseType(String t) => TypeParser().parse(t);
