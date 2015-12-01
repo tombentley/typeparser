@@ -1,6 +1,7 @@
 import com.github.tombentley.typeparser {
     parseModel,
-    parseType
+    parseType,
+    ParseError
 }
 import ceylon.test {
     test,
@@ -35,30 +36,49 @@ shared void testParseTypes() {
 """Tests parseType with a negative case."""
 test
 shared void testParseTypeEmptyInput() {
-    parseType("");
+    assert(is ParseError e = parseType(""));
+    assertEquals(e.message, "module not found: ''");
 }
 
 """Tests parseType with a negative case."""
 test
-shared void testParseTypeIdent() {
-    parseType("bdvbd");
+shared void testParseTypeUnfoundModule() {
+    assert(is ParseError e = parseType("bdvbd"));
+    assertEquals(e.message, "module not found: 'bdvbd'");
 }
 
-"Tests [[parseModel]] with a variety of valid inputs."
+"""Tests parseType with a negative case."""
 test
-shared void testParseModel() {
-    assertEquals(`String`, parseModel("ceylon.language::String"));
-    assertEquals(`Integer`, parseModel("ceylon.language::Integer"));
-    assertEquals(`Anything`, parseModel("ceylon.language::Anything"));
-    assertEquals(`Nothing`, parseModel("ceylon.language::Nothing"));
-    assertEquals(`true`, parseModel("ceylon.language::true"));
-    assertEquals(`false`, parseModel("ceylon.language::false"));
-    assertEquals(`null`, parseModel("ceylon.language::null"));
-    assertEquals(`nothing`, parseModel("ceylon.language::nothing"));
-    assertEquals(`empty`, parseModel("ceylon.language::empty"));
-    assertEquals(`print`, parseModel("ceylon.language::print"));
-    assertEquals(`String.size`, parseModel("ceylon.language::String.size"));
-    assertEquals(`String.endsWith`, parseModel("ceylon.language::String.endsWith"));
-    assertEquals(`List<String>.size`, parseModel("ceylon.language::List<ceylon.language::String>.size"));
-    assertEquals(`String|Integer`, parseModel("ceylon.language::String|ceylon.language::Integer"));
+shared void testParseTypeUnfoundPackage() {
+    assert(is ParseError e = parseType("ceylon.language.bdvbd"));
+    assertEquals(e.message, "package not found: 'ceylon.language.bdvbd'");
 }
+
+"""Tests parseType with a negative case."""
+test
+shared void testParseTypeUnfoundType() {
+    assert(is ParseError e = parseType("ceylon.language::bdvbd"));
+    assertEquals(e.message, "type does not exist: 'bdvbd' in 'package ceylon.language'");
+}
+
+"""Tests parseType with a negative case."""
+test
+shared void testParseTypeUnterminatedPackage() {
+    assert(is ParseError e = parseType("ceylon.language."));
+    assertEquals(e.message, "package not found: 'ceylon.language.'");
+}
+
+"""Tests parseType with a negative case."""
+test
+shared void testParseTypeUnterminatedModule() {
+    assert(is ParseError e = parseType("ceylon."));
+    assertEquals(e.message, "module not found: 'ceylon.'");
+}
+
+"""Tests parseType with a negative case."""
+test
+shared void testParseTypeModuleSyntax() {
+    assert(is ParseError e = parseType("ceylon.."));
+    assertEquals(e.message, "module not found: 'ceylon..'");
+}
+

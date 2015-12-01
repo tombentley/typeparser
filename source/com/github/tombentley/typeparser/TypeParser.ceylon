@@ -15,26 +15,33 @@ import ceylon.language.meta.model {
     Type
 }
 
-"""
-   input ::= intersectionType ;
-   intersectionType ::= unionType ('&' intersectionType) ;
-   unionType ::= simpleType ('|' intersectionType) ;
-   simpleType ::= declaration typeArguments? ('.' typeName typeArguments?)* ;
-   declaration ::= packageName '::' typeName ;
-   packageName ::= lident (. lident)* ;
-   typeName ::= uident;
-   typeArgments := '<' intersectionType (',' intersectionType)* '>';
-   
-   """
+
+
 class TypeParser(String input) {
+    /*
+     
+     input ::= intersectionType ;
+     intersectionType ::= unionType ('&' intersectionType) ;
+     unionType ::= simpleType ('|' intersectionType) ;
+     simpleType ::= declaration typeArguments? ('.' typeName typeArguments?)* ;
+     declaration ::= packageName '::' typeName ;
+     packageName ::= lident (. lident)* ;
+     typeName ::= uident;
+     typeArgments := '<' intersectionType (',' intersectionType)* '>';
+     
+     */
     
     value tokenizer = Tokenizer(input);
     
     """input ::= intersectionType ;"""
-    shared Type<> parse() {
-        value result = intersectionType();
-        tokenizer.expect(dtEoi);
-        return result;
+    shared Type<>|ParseError parse() {
+        try {
+            value result = intersectionType();
+            tokenizer.expect(dtEoi);
+            return result;
+        } catch (ParseError e) {
+            return e;
+        }
     }
     
     """intersectionType ::= unionType ('&' intersectionType) ;"""
@@ -71,14 +78,19 @@ class TypeParser(String input) {
             while (tokenizer.isType(dtDot)) {
                 value mt = typeName();
                 value mta = typeArguments();
-                assert(is ClassModel<>|InterfaceModel<> k = x.getClassOrInterface(mt, *mta));
-                x = k;
+                if (is ClassModel<>|InterfaceModel<> k = x.getClassOrInterface(mt, *mta)) {
+                    x = k;
+                } else {
+                    throw ParseError("member type neither class nor interface: ``mt`` member of ``x``");
+                }
             }
             return x;
         } else {
-            assert(ta.empty,
-                !tokenizer.isType(dtDot));
-            return d;
+            if (ta.empty,
+                !tokenizer.isType(dtDot)) {
+                return d;
+            }
+            throw ParseError("unsupported generic declaration: ``d``");
         }
     }
     
@@ -98,7 +110,7 @@ class TypeParser(String input) {
                 && p.name == "ceylon.language") {
                 return nothingType;
             } else {
-                throw AssertionError("type does not exist: ``t`` in ``p``" );
+                throw ParseError("type does not exist: '``t``' in '``p``'" );
             }
         }
     }
@@ -124,21 +136,22 @@ class TypeParser(String input) {
             ||tokenizer.current.type == dtLower) {
             return tokenizer.consume();
         } else {
-            throw AssertionError("unexpected token: expected ``dtUpper`` or ``dtLower``, found ``tokenizer.current``: ``input``");
+            throw ParseError("unexpected token: expected ``dtUpper`` or ``dtLower``, found ``tokenizer.current``: ``input``");
         }
         //return tokenizer.expect(dtUpper);
     }
     
     """packageName ::= lident (. lident)* ;"""
     Package packageName() {
+        variable String mname = "";
         variable Integer start = tokenizer.index;
         variable Module? mod = null;
         lident();
         while (true) {
             if (!mod exists) {
-                value xx = tokenizer.input.measure(start, tokenizer.index-start);
+                mname = tokenizer.input.measure(start, tokenizer.index-start);
                 for (m in modules.list) {
-                    if (m.name == xx) {
+                    if (m.name == mname) {
                         mod = m;
                         //start = tokenizer.index;
                         break;
@@ -150,10 +163,18 @@ class TypeParser(String input) {
             }
             lident();
         }
-        assert(exists m=mod);
-        assert(exists p=m.findPackage(tokenizer.input.measure(start, tokenizer.index-start)));
-        return p;
+        if (exists m=mod) {
+            value pname = tokenizer.input.measure(start, tokenizer.index-start);
+            if(exists p=m.findPackage(pname)) {
+                return p;
+            } else {
+                throw ParseError("package not found: '``pname``'");
+            }
+        } else {
+            throw ParseError("module not found: '``mname``'");
+        }
     }
+    
     String? uident() {
         if (tokenizer.current.type == dtUpper) {
             value result = tokenizer.current.token;
@@ -174,4 +195,20 @@ class TypeParser(String input) {
     }
 }
 
-shared Type<> parseType(String t) => TypeParser(t).parse();
+"""
+   Parses a "fully-qualified type expression" returning its [[Type]] model. 
+   
+   Fully-qualified type expression are not defined by the
+   Ceylon language specification, because in Ceylon source code
+   type expressions always use `import`ed type names, not fully-qualified ones, 
+   but the syntax is pretty much as you'd expect. 
+   
+   For example:
+   
+       ceylon.language::String
+       ceylon.language::true     // type Type, not the Value
+       ceylon.collection::MutableSet<ceylon.json::Object>
+   
+   """
+see(`function parseModel`)
+shared Type<>|ParseError parseType(String t) => TypeParser(t).parse();

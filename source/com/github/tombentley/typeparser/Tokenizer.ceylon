@@ -104,7 +104,7 @@ class Tokenizer(input) {
         if (current.type == type) {
             return consume();
         } else {
-            throw AssertionError("unexpected token: expected ``type``, found ``current``: ``input``");
+            throw ParseError("unexpected token: expected ``type``, found ``current``: ``input``");
         }
     }
     
