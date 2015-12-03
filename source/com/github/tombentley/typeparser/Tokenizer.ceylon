@@ -47,10 +47,10 @@ class Tokenizer(input) {
                     if (char2 == ':') {
                         return Token(dtDColon, input[ii:2], ii);
                     } else {
-                        throw Exception("tokenization error, expected ::, not :``char2`` at index ``ii``: ``input``");
+                        throw ParseError("tokenization error, expected ::, not :``char2`` at index ``ii``: ``input``");
                     }
                 }
-                throw Exception("unexpected end of input");
+                throw ParseError("unexpected end of input");
             }
             else {
                 if ('0' <= char <= '9') {
@@ -66,12 +66,12 @@ class Tokenizer(input) {
                         } else if (char2 == "i") {
                             return ident(dtLower, char2.string, ii);
                         } else {
-                            throw Exception("tokenization error, expected \\i or \\I, not :\\``char2`` at index ``ii``: ``input``");
+                            throw ParseError("tokenization error, expected \\i or \\I, not :\\``char2`` at index ``ii``: ``input``");
                         }
                     }
-                    throw Exception("unexpected end of input");
+                    throw ParseError("unexpected end of input");
                 }else {
-                    throw Exception("unexpected character ``char`` at index ``ii``: ``input``");
+                    throw ParseError("unexpected character ``char`` at index ``ii``: ``input``");
                 }
             }
         } else {
@@ -103,7 +103,7 @@ class Tokenizer(input) {
     
     "If the current token's type is the given type then consume the 
      token and return it. 
-     Otherwise throw an [[AssertionError]]."
+     Otherwise throw an [[ParseError]]."
     shared String expect(TokenType type) {
         if (current.type == type) {
             return consume();
