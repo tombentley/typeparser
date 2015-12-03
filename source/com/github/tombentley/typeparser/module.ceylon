@@ -3,4 +3,4 @@
  metamodels."
 by("Tom Bentley")
 license("http://www.apache.org/licenses/LICENSE-2.0")
-module com.github.tombentley.typeparser "1.0.1" {}
+module com.github.tombentley.typeparser "1.0.2" {}
