@@ -15,7 +15,31 @@ import ceylon.language.meta.model {
     Type
 }
 
-class TypeParser(
+"""
+   Parses a "type expression" returning its [[Type]] model. 
+   
+   Types may be  package-qualified or unqualified. 
+   To use unqualified types you need to supply a non-empty
+   [[imports]] argument, which determines which type names
+   can be used without package-qualification.
+   
+   To use qualified types the modules containing allow package 
+   qualifiers should be passed as the [[fqResolvableModules]] argument. 
+   This defaults to modules.list which means any type in the runtime can 
+   be expressed.
+   
+   Fully-qualified type expression are not defined by the
+   Ceylon language specification, because in Ceylon source code
+   type expressions always use `import`ed type names, not fully-qualified ones, 
+   but the syntax is pretty much as you'd expect. 
+   
+   For example:
+   
+       ceylon.language::String
+       ceylon.language::true     // type Type, not the Value
+       ceylon.collection::MutableSet<ceylon.json::Object>
+   """
+shared class TypeParser(
     imports=[], 
     fqResolvableModules = modules.list) {
     /*
