@@ -15,9 +15,9 @@ import ceylon.language.meta.model {
     Type
 }
 
-
-
-class TypeParser() {
+class TypeParser(
+    imports=[], 
+    fqResolvableModules = modules.list) {
     /*
      
      input ::= intersectionType ;
@@ -30,6 +30,20 @@ class TypeParser() {
      typeArgments := '<' intersectionType (',' intersectionType)* '>';
      
      */
+    "The imports"
+    Imports imports;
+    
+    "The modules used for resolving packages when parsing fully-qualified 
+     type names. First-wins policy of modules 
+     with duplicate names. Defaults to `modules.list`."
+    Module[] fqResolvableModules;
+    
+    "Whether to allow unqualified type names"
+    Boolean allowUq = !imports.empty;
+    "Whether to allow fully-qualified type names"
+    Boolean allowFq = !fqResolvableModules.empty;
+    Scope scope = Scope(imports);
+    value modMap = map({for (m in fqResolvableModules) m.name->m});
     
     """input ::= intersectionType ;"""
     shared Type<>|ParseError parse(String input) {
@@ -39,7 +53,7 @@ class TypeParser() {
             tokenizer.expect(dtEoi);
             return result;
         } catch (ParseError e) {
-            return e;
+            throw e;
         }
     }
     
@@ -93,24 +107,37 @@ class TypeParser() {
         }
     }
     
+    "Look up the type `t` in the givin package, or in the imports if the given 
+     package is null"
+    ClassOrInterfaceDeclaration|Type<>? lookup(Package? p, String t) {
+        if (exists p) {
+            if (exists r = p.getClassOrInterface(t)) {
+                return r;
+            } else if (exists f=t.first,
+                f.lowercase,
+                exists r = p.getMember<ValueDeclaration>(t)) {
+                return r.apply<Anything,Nothing>().type;
+            } else {
+                if (t == "Nothing"
+                    && p.name == "ceylon.language") {
+                    return nothingType;
+                }
+                return null;
+            }
+        } else {
+            return scope.find(t);
+        }
+    }
+    
     """declaration ::= packageName '::' typeName ;"""
     Type<>|ClassOrInterfaceDeclaration declaration(Tokenizer tokenizer) {
-        Package p = packageName(tokenizer);
-        tokenizer.expect(dtDColon);
+        
+        Package? p = if (allowFq) then packageName(tokenizer) else null;
         value t = typeName(tokenizer);
-        if (exists r = p.getClassOrInterface(t)) {
+        if (exists r = lookup(p, t)) {
             return r;
-        } else if (exists f=t.first,
-            f.lowercase,
-            exists r = p.getMember<ValueDeclaration>(t)) {
-            return r.apply<Anything,Nothing>().type;
         } else {
-            if (t == "Nothing"
-                && p.name == "ceylon.language") {
-                return nothingType;
-            } else {
-                throw ParseError("type does not exist: '``t``' in '``p``'" );
-            }
+            throw ParseError("type does not exist: '``t``' in '``p else scope``'" );
         }
     }
     
@@ -140,8 +167,8 @@ class TypeParser() {
         //return tokenizer.expect(dtUpper);
     }
     
-    """packageName ::= lident (. lident)* ;"""
-    Package packageName(Tokenizer tokenizer) {
+    """packageName ::= lident (. lident)* `::` ;"""
+    Package? packageName(Tokenizer tokenizer) {
         variable String mname = "";
         variable Integer start = tokenizer.index;
         variable Module? mod = null;
@@ -149,21 +176,26 @@ class TypeParser() {
         while (true) {
             if (!mod exists) {
                 mname = tokenizer.input.measure(start, tokenizer.index-start);
-                for (m in modules.list) {
-                    if (m.name == mname) {
-                        mod = m;
-                        //start = tokenizer.index;
-                        break;
+                mod = modMap[mname];
+            }
+            if (tokenizer.isType(dtDColon)) {
+                break;
+            } else if (tokenizer.isType(dtDot)) {
+                lident(tokenizer);
+            } else {
+                if (!allowUq) {
+                    if (mod exists) {
+                        throw ParseError("package not found: '``tokenizer.input.measure(start, tokenizer.index-start)``'");
+                    } else {
+                        throw ParseError("module not found: '``mname``'");
                     }
                 }
+                tokenizer.setIndex(start);
+                return null;
             }
-            if (!tokenizer.isType(dtDot)) {
-                break;
-            }
-            lident(tokenizer);
         }
         if (exists m=mod) {
-            value pname = tokenizer.input.measure(start, tokenizer.index-start);
+            value pname = tokenizer.input.measure(start, tokenizer.index-start-2);
             if(exists p=m.findPackage(pname)) {
                 return p;
             } else {
@@ -174,15 +206,6 @@ class TypeParser() {
         }
     }
     
-    String? uident(Tokenizer tokenizer) {
-        if (tokenizer.current.type == dtUpper) {
-            value result = tokenizer.current.token;
-            tokenizer.consume();
-            return result;
-        } else {
-            return null;
-        }
-    }
     String? lident(Tokenizer tokenizer) {
         if (tokenizer.current.type == dtLower) {
             value result = tokenizer.current.token;
@@ -210,4 +233,4 @@ class TypeParser() {
    
    """
 see(`function parseModel`)
-shared Type<>|ParseError parseType(String t) => TypeParser().parse(t);
+shared Type<>|ParseError parseType(String t, Imports imports=[]) => TypeParser(imports).parse(t);

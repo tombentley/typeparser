@@ -96,6 +96,10 @@ class Tokenizer(input) {
     
     "The index of the current token in the input."
     shared Integer index => ii;
+    shared void setIndex(Integer index) {
+        this.ii = index;
+        this.current_ = at(ii);
+    }
     
     "If the current token's type is the given type then consume the 
      token and return it. 
