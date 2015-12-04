@@ -120,7 +120,7 @@ shared class TypeFormatter(Imports imports=[],
                     //break;
                     continue;
                 } else {
-                    assert(false);
+                    return null;//give up
                 }
             }
             else {
@@ -233,12 +233,18 @@ shared class TypeFormatter(Imports imports=[],
                 if (parens) {
                     sb.append(">");
                 }
-                sb.append("(");
-                formatTupleElements(parametersTa, sb);
-                // TODO handle null return type
-                // TODO disable homogenous tuples in callable types?
-                sb.append(")");
-                return;
+                StringBuilder sb2 = StringBuilder();
+                if (formatTupleElements(parametersTa, sb2) exists) {
+                    // Note: we don't use the homo tuple repr for callable
+                    // thus exists condition ^^ rather than is Finished
+                    sb.append("(");
+                    sb.append(sb2.string);
+                    sb.append(")");
+                    return;
+                }
+                // else formatTupleElements couldn't find the element types
+                // shoud never happen with a Type, but fall thru to produce
+                // a verbose Tuple
             }
             
             // now do stuff which depends on a having a class declaration
@@ -286,6 +292,7 @@ shared class TypeFormatter(Imports imports=[],
                     sb.append(">");
                 }
                 sb.append("?");
+                return;
             } else if (abbreviateTuple,
                 `[]` in type.caseTypes,
                 exists tup=oneTuple(type)) {
@@ -294,35 +301,28 @@ shared class TypeFormatter(Imports imports=[],
                 
                 //formatTo(tup, sb);
                 StringBuilder sb2 = StringBuilder();
-                switch (r=formatTupleElements(type, sb2))
-                case (is Finished) {
+                if (exists r=formatTupleElements(type, sb2)) {
                     sb.appendCharacter('[');
                     sb.append(sb2.string);
                     sb.append("]");
+                    return;
                 }
-                case (is Null) {
-                    assert(false);//should never happen?
+            } 
+            variable value doneFirst = false;
+            // TODO precedence (eliminate null)
+            for (t in sort(type.caseTypes)) {
+                if (doneFirst) {
+                    sb.append("|");
+                } else {
+                    doneFirst = true;
                 }
-                else {
-                    assert(false);//should never happen?
+                value parens = t is ClassOrInterface<Entry<Object,Anything>>;
+                if (parens) {
+                    sb.append("<");
                 }
-            } else {
-                variable value doneFirst = false;
-                // TODO precedence (eliminate null)
-                for (t in sort(type.caseTypes)) {
-                    if (doneFirst) {
-                        sb.append("|");
-                    } else {
-                        doneFirst = true;
-                    }
-                    value parens = t is ClassOrInterface<Entry<Object,Anything>>;
-                    if (parens) {
-                        sb.append("<");
-                    }
-                    formatTo(t, sb);
-                    if (parens) {
-                        sb.append(">");
-                    }
+                formatTo(t, sb);
+                if (parens) {
+                    sb.append(">");
                 }
             }
         } else if (is IntersectionType<> type) {
