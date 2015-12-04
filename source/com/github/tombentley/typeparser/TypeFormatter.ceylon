@@ -6,6 +6,13 @@ import ceylon.language.meta.model {
     IntersectionType
 }
 
+"A formatter for [[Type]]s which can use abbreviations, and produced 
+ full-qualified and/or unqualified names according to the given 
+ [[imports]].
+ 
+ If you don't need abbreviations and do want all types to be 
+ fully-qualified using [[type ceylon.language.meta::type]] 
+ (i.e. `type(t).string`) will probably be quicker."
 shared class TypeFormatter(Imports imports=[],
     Boolean abbreviateSequential=true,
     Boolean abbreviateSequence=true,
@@ -19,6 +26,7 @@ shared class TypeFormatter(Imports imports=[],
     Boolean deterministic = true;
     Scope scope = Scope(imports);
     
+    "Formats the given type, returning the formatted string."
     shared String format(Type<> type) {
         value sb = StringBuilder();
         formatTo(type, sb);
