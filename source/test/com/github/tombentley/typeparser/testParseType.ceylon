@@ -138,7 +138,13 @@ shared void testParseTypesWithImports() {
     assertEquals(parseType("Foo&Bar", imports), `Foo&Bar`);
     assertEquals(parseType("Baz<Foo>", imports), `Baz<Foo>`);
     assertEquals(parseType("Sequence<Foo>", imports), `Sequence<Foo>`);
+    
+    assertEquals(parseType(
+        "Outer<String>"+
+                ".Member<Integer>", imports), 
+    `Outer<String>.Member<Integer>`);
 }
+
 
 // TODO test with member types
 // TODO test with grouped type expressions
