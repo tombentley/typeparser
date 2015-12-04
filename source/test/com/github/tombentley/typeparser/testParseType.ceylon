@@ -106,3 +106,7 @@ shared void testParseTypesWithImports() {
     assertEquals(parseType("Baz<Foo>", imports), `Baz<Foo>`);
     assertEquals(parseType("Sequence<Foo>", imports), `Sequence<Foo>`);
 }
+
+// TODO test with member types
+// TODO test with grouped type expressions
+// TODO test for precedence

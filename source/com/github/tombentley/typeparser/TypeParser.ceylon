@@ -55,12 +55,12 @@ shared class TypeParser(
      
      */
     "The imports"
-    Imports imports;
+    shared Imports imports;
     
     "The modules used for resolving packages when parsing fully-qualified 
      type names. First-wins policy of modules 
      with duplicate names. Defaults to `modules.list`."
-    Module[] fqResolvableModules;
+    shared Module[] fqResolvableModules;
     
     "Whether to allow unqualified type names"
     Boolean allowUq = !imports.empty;
@@ -77,7 +77,7 @@ shared class TypeParser(
             tokenizer.expect(dtEoi);
             return result;
         } catch (ParseError e) {
-            throw e;
+            return e;
         }
     }
     
