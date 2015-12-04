@@ -153,6 +153,8 @@ shared void testTypeFormatterAbbrev() {
     assertEquals(tf.format(`Sequential<String>`), "ceylon.language::String[]");
     assertEquals(tf.format(`Sequential<Empty>`), "[][]");
     assertEquals(tf.format(`String->Integer`), "ceylon.language::String->ceylon.language::Integer");
+    assertEquals(tf.format(`String-><Integer->Boolean>`), "ceylon.language::Entry<ceylon.language::String,ceylon.language::Integer->ceylon.language::Boolean>");
+    assertEquals(tf.format(`<String->Integer>->Boolean`), "ceylon.language::Entry<ceylon.language::String->ceylon.language::Integer,ceylon.language::Boolean>");
     assertEquals(tf.format(`Map<String,Integer>`), "ceylon.language::Map<ceylon.language::String,ceylon.language::Integer>");
     
     // basic tuples

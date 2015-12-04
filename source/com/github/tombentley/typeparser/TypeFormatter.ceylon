@@ -112,9 +112,11 @@ shared class TypeFormatter(Imports imports=[],
                 }
                 return;
             } else if (abbreviateEntry && 
-                    type.declaration == `class Entry`) {
-                assert(exists keyTa = type.typeArgumentList[0]);
-                assert(exists itemTa = type.typeArgumentList[1]);
+                    type.declaration == `class Entry`,
+                    exists keyTa = type.typeArgumentList[0],
+                    exists itemTa = type.typeArgumentList[1],
+                    !keyTa is Type<Entry<Object,Anything>>,
+                    !itemTa is Type<Entry<Object,Anything>>) {
                 formatTo(keyTa, sb);
                 sb.append("->");
                 formatTo(itemTa, sb);
