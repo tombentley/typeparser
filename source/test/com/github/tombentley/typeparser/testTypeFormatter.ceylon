@@ -151,6 +151,7 @@ shared void testTypeFormatterAbbrev() {
     assertEquals(tf.format(`Set<String>`), "ceylon.language::Set<ceylon.language::String>");
     assertEquals(tf.format(`Sequence<String>`), "[ceylon.language::String+]");
     assertEquals(tf.format(`Sequential<String>`), "ceylon.language::String[]");
+    assertEquals(tf.format(`Sequential<String->Integer>`), "<ceylon.language::String->ceylon.language::Integer>[]");
     assertEquals(tf.format(`Sequential<Empty>`), "[][]");
     assertEquals(tf.format(`String->Integer`), "ceylon.language::String->ceylon.language::Integer");
     assertEquals(tf.format(`String-><Integer->Boolean>`), "ceylon.language::Entry<ceylon.language::String,ceylon.language::Integer->ceylon.language::Boolean>");
@@ -168,11 +169,16 @@ shared void testTypeFormatterAbbrev() {
     // homo tuples
     assertEquals(tf.format(`Integer[3]`), "ceylon.language::Integer[3]");
     assertEquals(tf.format(`<Integer|String>[3]`), "<ceylon.language::Integer|ceylon.language::String>[3]");
+    assertEquals(tf.format(`<Integer->String>[3]`), "<ceylon.language::Integer->ceylon.language::String>[3]");
+    assertEquals(tf.format(`Integer-><String[3]>`), "ceylon.language::Integer->ceylon.language::String[3]");
+    assertEquals(tf.format(`<Integer[3]>->String`), "ceylon.language::Integer[3]->ceylon.language::String");
     
     // Callable
     assertEquals(tf.format(`String(Integer)`), "ceylon.language::String(ceylon.language::Integer)");
     assertEquals(tf.format(`String(Integer,Boolean)`), "ceylon.language::String(ceylon.language::Integer,ceylon.language::Boolean)");
     assertEquals(tf.format(`String(Integer,Boolean|String)`), "ceylon.language::String(ceylon.language::Integer,ceylon.language::Boolean|ceylon.language::String)");
+    assertEquals(tf.format(`<String->Boolean>(Integer)`), "<ceylon.language::String->ceylon.language::Boolean>(ceylon.language::Integer)");
+    assertEquals(tf.format(`String-><Boolean(Integer)>`), "ceylon.language::String->ceylon.language::Boolean(ceylon.language::Integer)");
     
     // TODO Callable with spread
     

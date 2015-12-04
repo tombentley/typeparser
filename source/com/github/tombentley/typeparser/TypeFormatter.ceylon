@@ -82,9 +82,16 @@ shared class TypeFormatter(Imports imports=[],
     shared void formatTo(Type<> type, StringBuilder sb) {
         if (is ClassOrInterface<> type) {
             if (abbreviateSequential && 
-                    type.declaration == `interface Sequential`) {
-                assert(exists elementTa = type.typeArgumentList[0]);
+                    type.declaration == `interface Sequential`,
+                    exists elementTa = type.typeArgumentList[0]) {
+                value parens = elementTa is ClassOrInterface<Entry<Object,Anything>>;
+                if (parens) {
+                    sb.append("<");
+                }
                 formatTo(elementTa, sb);
+                if (parens) {
+                    sb.append(">");
+                }
                 sb.append("[]");
                 return;
             } else if (abbreviateEmpty && 
@@ -126,11 +133,13 @@ shared class TypeFormatter(Imports imports=[],
                 // Iterate here, instead of recurse?
                 StringBuilder sb2 = StringBuilder();
                 if (exists [homoType, homoLength]=formatTupleElements(type, sb2)) {
-                    if (homoType is UnionType<>|IntersectionType<>) {
+                    value parens = homoType is UnionType<>|IntersectionType<>
+                            || homoType is ClassOrInterface<Entry<Object, Anything>>;
+                    if (parens) {
                         sb.append("<");
                     }
                     formatTo(homoType, sb);
-                    if (homoType is UnionType<>|IntersectionType<>) {
+                    if (parens) {
                         sb.append(">");
                     }
                     sb.append("[");
@@ -147,7 +156,14 @@ shared class TypeFormatter(Imports imports=[],
                     exists parametersTa = type.typeArgumentList[1],
                     is ClassOrInterface<Tuple<Anything,Anything,Anything[]>> parametersTa) {
                 assert(exists resultTa = type.typeArgumentList[0]);
+                value parens = resultTa is ClassOrInterface<Entry<Object,Anything>>;
+                if (parens) {
+                    sb.append("<");
+                }
                 formatTo(resultTa, sb);
+                if (parens) {
+                    sb.append(">");
+                }
                 sb.append("(");
                 formatTupleElements(parametersTa, sb);
                 sb.append(")");
