@@ -156,7 +156,9 @@ shared class TypeFormatter(Imports imports=[],
                     exists parametersTa = type.typeArgumentList[1],
                     is ClassOrInterface<Tuple<Anything,Anything,Anything[]>> parametersTa) {
                 assert(exists resultTa = type.typeArgumentList[0]);
-                value parens = resultTa is ClassOrInterface<Entry<Object,Anything>>;
+                value parens = resultTa is ClassOrInterface<Entry<Object,Anything>>
+                        || resultTa is UnionType<> 
+                        || resultTa is IntersectionType<>;
                 if (parens) {
                     sb.append("<");
                 }
@@ -194,22 +196,46 @@ shared class TypeFormatter(Imports imports=[],
             }
         
         } else if (is UnionType<> type) {
-            variable value doneFirst = false;
-            // TODO precedence
-            variable value opt = false;
-            for (t in sort(type.caseTypes)) {
-                if (abbreviateOptional && t == `Null` && type.caseTypes.size != 1) {
-                    opt = true;
-                    continue;
+            if (abbreviateOptional,
+                type.caseTypes.size == 2,
+                `Null` in type.caseTypes,
+                exists t0 = type.caseTypes[0],
+                exists t1 = type.caseTypes[1]) {
+                Type<> other;
+                if (`Null` == t0) {
+                    other = t1;
+                } else {
+                    other = t0;
                 }
-                if (doneFirst) {
-                    sb.append("|");
+                value parens = other is ClassOrInterface<Entry<Object,Anything>>
+                        || other is IntersectionType<>;
+                if (parens) {
+                    sb.append("<");
                 }
-                doneFirst = true;
-                formatTo(t, sb);
-            }
-            if (opt) {
+                formatTo(other, sb);
+                if (parens) {
+                    sb.append(">");
+                }
                 sb.append("?");
+            } else {
+                variable value doneFirst = false;
+                // TODO precedence (eliminate null)
+                for (t in sort(type.caseTypes)) {
+                    if (doneFirst) {
+                        sb.append("|");
+                    } else {
+                        doneFirst = true;
+                    }
+                    value parens = t is ClassOrInterface<Entry<Object,Anything>>
+                            || t is IntersectionType<>;
+                    if (parens) {
+                        sb.append("<");
+                    }
+                    formatTo(t, sb);
+                    if (parens) {
+                        sb.append(">");
+                    }
+                }
             }
         } else if (is IntersectionType<> type) {
             variable value doneFirst = false;
@@ -217,9 +243,17 @@ shared class TypeFormatter(Imports imports=[],
             for (t in sort(type.satisfiedTypes)) {
                 if (doneFirst) {
                     sb.append("&");
+                } else {
+                    doneFirst = true;
                 }
-                doneFirst = true;
+                value parens = t is UnionType<>;
+                if (parens) {
+                    sb.append("<");
+                }
                 formatTo(t, sb);
+                if (parens) {
+                    sb.append(">");
+                }
             }
         } else if (type == nothingType) {
             value find = scope.find("Nothing");

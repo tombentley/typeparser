@@ -148,15 +148,27 @@ shared void testTypeFormatterAbbrev() {
     // special case
     assertEquals(tf.format(`Nothing`), "ceylon.language::Nothing");
     
+    // generic
     assertEquals(tf.format(`Set<String>`), "ceylon.language::Set<ceylon.language::String>");
+    assertEquals(tf.format(`Map<String,Integer>`), "ceylon.language::Map<ceylon.language::String,ceylon.language::Integer>");
+    
+    // seqeunce
     assertEquals(tf.format(`Sequence<String>`), "[ceylon.language::String+]");
+    
+    // sequential
     assertEquals(tf.format(`Sequential<String>`), "ceylon.language::String[]");
     assertEquals(tf.format(`Sequential<String->Integer>`), "<ceylon.language::String->ceylon.language::Integer>[]");
     assertEquals(tf.format(`Sequential<Empty>`), "[][]");
+    
+    // iterable
+    assertEquals(tf.format(`{String*}`), "{ceylon.language::String*}");
+    assertEquals(tf.format(`{String+}`), "{ceylon.language::String+}");
+    
+    // entry
     assertEquals(tf.format(`String->Integer`), "ceylon.language::String->ceylon.language::Integer");
+    // entry w/ entry
     assertEquals(tf.format(`String-><Integer->Boolean>`), "ceylon.language::Entry<ceylon.language::String,ceylon.language::Integer->ceylon.language::Boolean>");
     assertEquals(tf.format(`<String->Integer>->Boolean`), "ceylon.language::Entry<ceylon.language::String->ceylon.language::Integer,ceylon.language::Boolean>");
-    assertEquals(tf.format(`Map<String,Integer>`), "ceylon.language::Map<ceylon.language::String,ceylon.language::Integer>");
     
     // basic tuples
     assertEquals(tf.format(`[Integer]`), "[ceylon.language::Integer]");
@@ -164,7 +176,8 @@ shared void testTypeFormatterAbbrev() {
     assertEquals(tf.format(`[Integer,String+]`), "[ceylon.language::Integer,ceylon.language::String+]");
     assertEquals(tf.format(`[Integer,String*]`), "[ceylon.language::Integer,ceylon.language::String*]");
     
-    // TODO defaulted tuples
+    // defaulted tuples
+    //assertEquals(tf.format(`[Integer=]`), "[ceylon.language::Integer=]");
     
     // homo tuples
     assertEquals(tf.format(`Integer[3]`), "ceylon.language::Integer[3]");
@@ -177,16 +190,40 @@ shared void testTypeFormatterAbbrev() {
     assertEquals(tf.format(`String(Integer)`), "ceylon.language::String(ceylon.language::Integer)");
     assertEquals(tf.format(`String(Integer,Boolean)`), "ceylon.language::String(ceylon.language::Integer,ceylon.language::Boolean)");
     assertEquals(tf.format(`String(Integer,Boolean|String)`), "ceylon.language::String(ceylon.language::Integer,ceylon.language::Boolean|ceylon.language::String)");
+    // callable w/ union
+    assertEquals(tf.format(`<Boolean|String>(Integer)`), "<ceylon.language::Boolean|ceylon.language::String>(ceylon.language::Integer)");
+    assertEquals(tf.format(`Boolean|<String(Integer)>`), "ceylon.language::Boolean|ceylon.language::String(ceylon.language::Integer)");
+    // callable w/ intersection
+    assertEquals(tf.format(`<Foo&Bar>(Integer)`), "<test.com.github.tombentley.typeparser::Bar&test.com.github.tombentley.typeparser::Foo>(ceylon.language::Integer)");
+    assertEquals(tf.format(`Foo&<Bar(Integer)>`), "test.com.github.tombentley.typeparser::Bar(ceylon.language::Integer)&test.com.github.tombentley.typeparser::Foo");
+    // callable w/ entry
     assertEquals(tf.format(`<String->Boolean>(Integer)`), "<ceylon.language::String->ceylon.language::Boolean>(ceylon.language::Integer)");
     assertEquals(tf.format(`String-><Boolean(Integer)>`), "ceylon.language::String->ceylon.language::Boolean(ceylon.language::Integer)");
-    
-    // TODO Callable with spread
+    // Callable with spread: formatter doesn't have to support this because
+    // it's only when the spread arguments type is a type parameter
+    // that we don't know it's sequnce type. But at runtime there are no 
+    // type parameters (IOW we know the tps actual sequence types)
     
     // union
     assertEquals(tf.format(`String|Integer`), "ceylon.language::Integer|ceylon.language::String");
+    // optional
     assertEquals(tf.format(`String|Null`), "ceylon.language::String?");
     assertEquals(tf.format(`Null|String`), "ceylon.language::String?");
+    assertEquals(tf.format(`String|Integer|Null`), "ceylon.language::Integer|ceylon.language::Null|ceylon.language::String");
+    assertEquals(tf.format(`Null|String|Integer`), "ceylon.language::Integer|ceylon.language::Null|ceylon.language::String");
+    // union w/ entry
+    assertEquals(tf.format(`<String->Integer>|Boolean`), "ceylon.language::Boolean|<ceylon.language::String->ceylon.language::Integer>");
+    assertEquals(tf.format(`String-><Integer|Boolean>`), "ceylon.language::String->ceylon.language::Boolean|ceylon.language::Integer");
+    // optional w/ entry
+    assertEquals(tf.format(`<String->Integer>|Null`), "<ceylon.language::String->ceylon.language::Integer>?");
+    assertEquals(tf.format(`String-><Integer|Null>`), "ceylon.language::String->ceylon.language::Integer?");
+    
     
     // intersection
     assertEquals(tf.format(`Usable&Resource`), "ceylon.language::Resource&ceylon.language::Usable");
+    // intersection w/ union
+    assertEquals(tf.format(`<Usable&Resource>|Null`), "<ceylon.language::Resource&ceylon.language::Usable>?");
+    assertEquals(tf.format(`Usable&<Resource|Null>`), "ceylon.language::Resource&ceylon.language::Usable");// type reduction!!
+    assertEquals(tf.format(`<Resource|Null>&Usable`), "ceylon.language::Resource&ceylon.language::Usable");// type reduction!!
+    // TODO intersection w/ entry (will reduce) 
 }
