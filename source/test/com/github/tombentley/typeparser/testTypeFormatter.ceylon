@@ -177,7 +177,17 @@ shared void testTypeFormatterAbbrev() {
     assertEquals(tf.format(`[Integer,String*]`), "[ceylon.language::Integer,ceylon.language::String*]");
     
     // defaulted tuples
-    //assertEquals(tf.format(`[Integer=]`), "[ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Integer=]`), "[ceylon.language::Integer=]");
+    assertEquals(tf.format(`[]|Tuple<Integer,Integer,[]>|Tuple<String,String,[]>`), "[]|[ceylon.language::Integer]|[ceylon.language::String]");
+    assertEquals(tf.format(`[String,Integer=]`), "[ceylon.language::String,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[String=,Integer=]`), "[ceylon.language::String=,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Boolean, String, Integer=]`), "[ceylon.language::Boolean,ceylon.language::String,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Boolean, String=,Integer=]`), "[ceylon.language::Boolean,ceylon.language::String=,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Boolean=,String=,Integer=]`), "[ceylon.language::Boolean=,ceylon.language::String=,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Float, Boolean, String, Integer=]`), "[ceylon.language::Float,ceylon.language::Boolean,ceylon.language::String,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Float, Boolean, String=,Integer=]`), "[ceylon.language::Float,ceylon.language::Boolean,ceylon.language::String=,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Float, Boolean=,String=,Integer=]`), "[ceylon.language::Float,ceylon.language::Boolean=,ceylon.language::String=,ceylon.language::Integer=]");
+    assertEquals(tf.format(`[Float=,Boolean=,String=,Integer=]`), "[ceylon.language::Float=,ceylon.language::Boolean=,ceylon.language::String=,ceylon.language::Integer=]");
     
     // homo tuples
     assertEquals(tf.format(`Integer[3]`), "ceylon.language::Integer[3]");

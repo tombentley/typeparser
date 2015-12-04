@@ -25,59 +25,117 @@ shared class TypeFormatter(Imports imports=[],
         return sb.string;
     }
     
-    "Format the elements of the given Tuple type to the given string builder
-     return the `[homo, length]` pair if the tuple is homogeneous."
-    [Type<>, Integer]? formatTupleElements(ClassOrInterface<Anything> type, StringBuilder sb2) {
-        variable Type<>? homo = null;
-        variable Integer couldBeHomo = 0;
-        variable Type<> x = type;
-        while(is ClassOrInterface<Tuple<Anything,Anything,Anything[]>> y=x) {
-                    assert(exists elementsTa = y.typeArgumentList[0]);
-                    assert(exists firstTa = y.typeArgumentList[1]);
-                    assert(exists restTa = y.typeArgumentList[2]);
-                    if (couldBeHomo==0) {
-                        homo = firstTa;
-                        couldBeHomo = 1;
-                    } else if (couldBeHomo > 0) {
-                        assert (exists h=homo);
-                        if (h==firstTa) {
-                            couldBeHomo++;
-                        } else {
-                            couldBeHomo = -1;
-                        }
-                    }
-                    formatTo(firstTa, sb2);
-                    if (restTa == `Empty`) {
-                        //sb2.append(",");
-                        //formatTo(restTa, sb2);
-                        break;
-                    } else if (restTa.subtypeOf(`Tuple<Anything,Anything,Anything[]>`)) {
-                        sb2.append(",");
-                        x = restTa;
-                        continue;
-                    } else if (restTa.subtypeOf(`Sequence<Anything>`)) {
-                        sb2.append(",");
-                        assert(is ClassOrInterface<Sequence<Anything>> restTa);
-                        assert(exists z=restTa.typeArgumentList[0]);
-                        formatTo(z, sb2);
-                        sb2.append("+");
-                        break;
-                    } else if (restTa.subtypeOf(`Sequential<Anything>`)) {
-                        sb2.append(",");
-                        assert(is ClassOrInterface<Sequential<Anything>> restTa);
-                        assert(exists z=restTa.typeArgumentList[0]);
-                        formatTo(z, sb2);
-                        sb2.append("*");
-                        break;
-                    }
-                }
-        if (couldBeHomo > 1) {
-            assert(exists h=homo);
-            return [h, couldBeHomo];
+    "If the given union contains a single 1-Tuple type `[X]` then 
+     return `Type<X>`, otherwise return null"
+    function oneTuple(UnionType<Anything> type) {
+        value tups = type.caseTypes.narrow<ClassOrInterface<Tuple<Anything,Anything,Anything[]>>>();
+        if (tups.size == 1, 
+            exists tup = tups.first) {
+            //assert(exists firstTa = tup.typeArgumentList[1]);
+            return tup;
         } else {
             return null;
         }
     }
+    
+    """Format the elements of the given Tuple type to the given string builder
+     
+       * return null if the tuple couldn't be elementized;
+         in this case the given string builds hold nonsense,
+       * return finished if the tuple could be elementized 
+         (and thus the given string builder holds something useful)
+         and is not homogenous,
+       * return the `[homo, length]` pair if the tuple is homogeneous
+         (the given string builder still holds something useful)
+    """
+    [Type<>, Integer]|Null|Finished formatTupleElements(
+            variable Type<> tupleOrEmpty, 
+            StringBuilder sb) {
+        variable Type<>? homo = null;
+        variable Integer couldBeHomo = 0;
+        variable Boolean defaulted = false;
+        while(true) {
+            if (is UnionType<> union=tupleOrEmpty,
+                union.caseTypes.size == 2,
+                exists t0 = union.caseTypes[0],
+                exists t1 = union.caseTypes[1],
+                (t0 == `[]` || t1 == `[]`)) {
+                defaulted = true;
+                if (t0 == `[]`) {
+                    tupleOrEmpty = t1;
+                } else {
+                    tupleOrEmpty = t0;
+                }
+                continue;
+            }
+            if (is ClassOrInterface<Tuple<Anything,Anything,Anything[]>> tuple=tupleOrEmpty) {
+                assert(exists elementsTa = tuple.typeArgumentList[0]);
+                assert(exists firstTa = tuple.typeArgumentList[1]);
+                assert(exists restTa = tuple.typeArgumentList[2]);
+                if (couldBeHomo==0) {
+                    homo = firstTa;
+                    couldBeHomo = 1;
+                } else if (couldBeHomo > 0) {
+                    assert (exists h=homo);
+                    if (h==firstTa) {
+                        couldBeHomo++;
+                    } else {
+                        couldBeHomo = -1;
+                    }
+                }
+                formatTo(firstTa, sb);
+                if (defaulted) {
+                    sb.append("=");
+                    defaulted = false;
+                }
+                if (restTa == `Empty`) {
+                    break;
+                } else if (restTa.subtypeOf(`Tuple<Anything,Anything,Anything[]>`)) {
+                    sb.append(",");
+                    tupleOrEmpty = restTa;
+                    continue;
+                } else if (!defaulted, restTa.subtypeOf(`Sequence<Anything>`)) {
+                    sb.append(",");
+                    assert(is ClassOrInterface<Sequence<Anything>> restTa);
+                    assert(exists z=restTa.typeArgumentList[0]);
+                    formatTo(z, sb);
+                    sb.append("+");
+                    break;
+                } else if (!defaulted, restTa.subtypeOf(`Sequential<Anything>`),
+                        is ClassOrInterface<Sequential<Anything>> restTa) {
+                    sb.append(",");
+                    assert(exists z=restTa.typeArgumentList[0]);
+                    formatTo(z, sb);
+                    sb.append("*");
+                    break;
+                } else if (is UnionType<> restTa,
+                    `[]` in restTa.caseTypes,
+                    exists tup=oneTuple(restTa)) {
+                    assert(exists firstTax = tup.typeArgumentList[1]);
+                    sb.append(",");
+                    //formatTo(firstTax, sb2);
+                    //sb2.append("=");
+                    tupleOrEmpty=tup;
+                    defaulted=true;
+                    //break;
+                    continue;
+                } else {
+                    assert(false);
+                }
+            }
+            else {
+                return null;
+            }
+        }
+            
+        if (couldBeHomo > 1) {
+            assert(exists h=homo);
+            return [h, couldBeHomo];
+        } else {
+            return finished;
+        }
+    }
+
     
     shared void formatTo(Type<> type, StringBuilder sb) {
         if (is ClassOrInterface<> type) {
@@ -128,11 +186,24 @@ shared class TypeFormatter(Imports imports=[],
                 sb.append("->");
                 formatTo(itemTa, sb);
                 return;
-            } else if (abbreviateTuple && 
-                    type.declaration == `class Tuple`) {
+            } else if (abbreviateTuple, 
+                    is ClassOrInterface<Tuple<Anything,Anything,Anything[]>> type) {
                 // Iterate here, instead of recurse?
                 StringBuilder sb2 = StringBuilder();
-                if (exists [homoType, homoLength]=formatTupleElements(type, sb2)) {
+                switch(k = formatTupleElements(type, sb2)) 
+                case (is Null) {
+                    // could figure out tuple elements, fall thru 
+                    // to print a verbose Tuple
+                } 
+                case (is Finished) {
+                    // not homogeneous, but we have elements
+                    sb.append("[");
+                    sb.append(sb2.string);
+                    sb.append("]");
+                    return;
+                } else {
+                    // it's a homogeneous tuple!
+                    value [homoType, homoLength]=k; 
                     value parens = homoType is UnionType<>|IntersectionType<>
                             || homoType is ClassOrInterface<Entry<Object, Anything>>;
                     if (parens) {
@@ -145,12 +216,8 @@ shared class TypeFormatter(Imports imports=[],
                     sb.append("[");
                     sb.append(homoLength.string);
                     sb.append("]");
-                } else {
-                    sb.append("[");
-                    sb.append(sb2.string);
-                    sb.append("]");
+                    return;
                 }
-                return;
             } else if (abbreviateEntry && 
                     type.declaration == `interface Callable`,
                     exists parametersTa = type.typeArgumentList[1],
@@ -168,6 +235,8 @@ shared class TypeFormatter(Imports imports=[],
                 }
                 sb.append("(");
                 formatTupleElements(parametersTa, sb);
+                // TODO handle null return type
+                // TODO disable homogenous tuples in callable types?
                 sb.append(")");
                 return;
             }
@@ -217,6 +286,26 @@ shared class TypeFormatter(Imports imports=[],
                     sb.append(">");
                 }
                 sb.append("?");
+            } else if (abbreviateTuple,
+                `[]` in type.caseTypes,
+                exists tup=oneTuple(type)) {
+                // [X=] means []|[X] so any union containing both [] and a 1-tuple
+                // can be abbreviated
+                
+                //formatTo(tup, sb);
+                StringBuilder sb2 = StringBuilder();
+                switch (r=formatTupleElements(type, sb2))
+                case (is Finished) {
+                    sb.appendCharacter('[');
+                    sb.append(sb2.string);
+                    sb.append("]");
+                }
+                case (is Null) {
+                    assert(false);//should never happen?
+                }
+                else {
+                    assert(false);//should never happen?
+                }
             } else {
                 variable value doneFirst = false;
                 // TODO precedence (eliminate null)
@@ -226,8 +315,7 @@ shared class TypeFormatter(Imports imports=[],
                     } else {
                         doneFirst = true;
                     }
-                    value parens = t is ClassOrInterface<Entry<Object,Anything>>
-                            || t is IntersectionType<>;
+                    value parens = t is ClassOrInterface<Entry<Object,Anything>>;
                     if (parens) {
                         sb.append("<");
                     }
