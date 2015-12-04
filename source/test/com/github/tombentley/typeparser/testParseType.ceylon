@@ -9,9 +9,15 @@ import com.github.tombentley.typeparser {
     Imports
 }
 
-interface Foo {}
+interface Foo {
+}
 interface Bar {}
 interface Baz<T> {}
+
+interface Outer<X> {
+    shared interface Member<Y> {}
+}
+
 
 """Tests parseType with a variety of valid inputs"""
 test
@@ -32,6 +38,12 @@ shared void testParseTypes() {
     assertEquals(parseType("test.com.github.tombentley.typeparser::Foo|test.com.github.tombentley.typeparser::Bar"), `Foo|Bar`);
     assertEquals(parseType("test.com.github.tombentley.typeparser::Foo&test.com.github.tombentley.typeparser::Bar"), `Foo&Bar`);
     assertEquals(parseType("test.com.github.tombentley.typeparser::Baz<test.com.github.tombentley.typeparser::Foo>"), `Baz<Foo>`);
+    
+    
+    assertEquals(parseType(
+        "test.com.github.tombentley.typeparser::Outer<ceylon.language::String>"+
+                ".Member<ceylon.language::Integer>"), 
+        `Outer<String>.Member<Integer>`);
 }
 
 """Tests parseType with a negative case."""
@@ -81,6 +93,27 @@ test
 shared void testParseTypeModuleSyntax() {
     assert(is ParseError e = parseType("ceylon.."));
     assertEquals(e.message, "module not found: 'ceylon..'");
+}
+
+"""Tests parseType with a negative case."""
+test
+shared void testParseTypeUnfoundMemberType() {
+    assert(is ParseError e = parseType("test.com.github.tombentley.typeparser::Outer<ceylon.language::String>.Fred"));
+    assertEquals(e.message, "member type does not exist: Fred member of test.com.github.tombentley.typeparser::Outer");
+}
+
+"""Tests parseType with a negative case."""
+test
+shared void testParseTypeNotInstantiated() {
+    assert(is ParseError e = parseType("test.com.github.tombentley.typeparser::Baz"));
+    assertEquals(e.message, "erronerous type instantiation test.com.github.tombentley.typeparser::Baz: Not enough type arguments provided: 0, but requires exactly 1");
+}
+
+"""Tests parseType with a negative case."""
+test
+shared void testParseTypeMemberNotInstantiated() {
+    assert(is ParseError e = parseType("test.com.github.tombentley.typeparser::Outer<ceylon.language::String>.Member"));
+    assertEquals(e.message, "erronerous type instantiation Member: Not enough type arguments provided: 0, but requires exactly 1");
 }
 
 """Tests parseType with a variety of valid inputs"""

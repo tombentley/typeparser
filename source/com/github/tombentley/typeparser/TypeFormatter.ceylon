@@ -143,8 +143,8 @@ shared class TypeFormatter(Imports imports=[],
             return finished;
         }
     }
-
     
+    "Appends the formatting for the given type to the given string builder."
     shared void formatTo(Type<> type, StringBuilder sb) {
         if (is ClassOrInterface<> type) {
             if (abbreviateSequential && 

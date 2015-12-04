@@ -12,7 +12,9 @@ import ceylon.language.meta.model {
     ClassModel,
     nothingType,
     InterfaceModel,
-    Type
+    Type,
+    Member,
+    TypeApplicationException
 }
 
 """
@@ -42,6 +44,10 @@ import ceylon.language.meta.model {
 shared class TypeParser(
     imports=[], 
     fqResolvableModules = modules.list) {
+    
+    // TODO fix precedence
+    // TODO support abbreviated types!
+    
     /*
      
      input ::= intersectionType ;
@@ -104,21 +110,33 @@ shared class TypeParser(
     """simpleType ::= declaration typeArguments? ('.' typeName typeArguments?)* ;"""
     Type<> simpleType(Tokenizer tokenizer) {
         value d = declaration(tokenizer);
-        Type<>[] ta;
-        if (tokenizer.current.type == dtLt) {
-            ta = typeArguments(tokenizer);
-        } else {
-            ta = [];
-        }
+        Type<>[] ta = if (tokenizer.current.type == dtLt) then typeArguments(tokenizer) else [];
+        
         if (is ClassOrInterfaceDeclaration d) {
-            variable ClassOrInterface<> x = d.apply<Anything>(*ta);
+            variable ClassOrInterface<> x;
+            try {
+                x = d.apply<Anything>(*ta);
+            } catch (TypeApplicationException e) {
+                value tas = if (ta.empty) then "" else ta.string.replaceFirst("[", "<").replaceLast("]", ">");
+                throw ParseError("erronerous type instantiation ``d.qualifiedName+tas``: ``e.message``");
+            }
             while (tokenizer.isType(dtDot)) {
                 value mt = typeName(tokenizer);
-                value mta = typeArguments(tokenizer);
-                if (is ClassModel<>|InterfaceModel<> k = x.getClassOrInterface(mt, *mta)) {
+                value mta = if (tokenizer.current.type == dtLt) then typeArguments(tokenizer) else [];
+                Member<Nothing,ClassOrInterface<Anything>>? k;
+                try {
+                    k = x.getClassOrInterface<Nothing, ClassOrInterface<>>(mt, *mta);
+                } catch (TypeApplicationException e) {
+                    value tas = if (mta.empty) then "" else mta.string.replaceFirst("[", "<").replaceLast("]", ">");
+                    throw ParseError("erronerous type instantiation ``mt+tas.string``: ``e.message``");
+                    
+                }
+                if (is ClassOrInterface<Anything> k) {
                     x = k;
+                } else if (exists k){
+                    throw ParseError("member type neither class nor interface: ``mt`` member of ``x.declaration.qualifiedName`` is a ``k``");
                 } else {
-                    throw ParseError("member type neither class nor interface: ``mt`` member of ``x``");
+                    throw ParseError("member type does not exist: ``mt`` member of ``x.declaration.qualifiedName``");
                 }
             }
             return x;
