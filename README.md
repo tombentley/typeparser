@@ -1,30 +1,38 @@
 # typeparser
 
-Functions for parsing fully qualified type expression-like and reference expression-like Strings into Ceylon metamodels.
+Facilities for parsing and formatting type expression-like Strings into 
+Ceylon metamodels.
 
-The module provides two functions `parseType()` for getting a `Type` from a type-like expression
-and `parseModel()` for getting a `Type|Model` from a reference-like expression.
+## Type expressions
 
-For example:
+The `TypeParser` can be used to parse an expression into a `Type`. 
+It can be configured to allow unqualified names using 
+`Imports` (which function rather like the `import` statement), but 
+by default uses full-qualified names. The `parseType()` function is 
+provided as a shortcut.
 
-    assert(is Type<> integerType = parseType("ceylon.language::Integer");
-    assert(is Function<> printFunction = parseModel("ceylon.language::print");
+    assert(is Type<> stringType = parseType("ceylon.language::String"));
     
-## Qualified vs. Unqualified
-
-By default `parseType()` requires all types to be qualified with a 
-package name. This means the accepted inputs aren't true Celyon type 
-expressions. By passing `Imports` to `parseType()` it's 
-possible to allow true type expressions, with the benefit that the 
-expressions are also much shorter:
-
-    Imports imports = [`package ceylon.language`];
-    assert(is Type<> integerType = parseType("Integer". imports);
+    // Adding a Package to the imports is like a wildcard import
+    assert(is Type<> stringType2 = parseType("String", [`package ceylon.language`]));
     
-Including a `Package` in the imports is like a wildcard `import`,
-including a `ClassOrInterfaceDeclaration` is like a normal `import` 
-and including a `String->ClassOrInterfaceDeclaration` is like
-an `import` alias.
+    // By default the usual abbreviations are supported
+    assert(is Type<> optionalStringType = parseType("String?", [`package ceylon.language`]);
+    
+    assert(is ParseError error = parseType("Foo?", [`package ceylon.language`]);
 
-`parseModel()` does not support `Imports` (yet).
+The `TypeFormatter` does the reverse and formats a `Type<>` to a `String`
+(but not that the `string` attribute of `Type` is good if all you need a 
+fully-qualified and unabbreviated expressions).
 
+    print(TypeFormatter().format(`String[]`, [`package ceylon.language`]));
+    // prints "String[]"
+
+    
+## Model expressions
+
+The `ModelParser` supports parsing more general model reference expressions:
+
+    assert(is Function<> printFunction = parseModel("ceylon.language::print"));
+    
+But currently this doesn't support `Imports`, nor type abbreviations.
