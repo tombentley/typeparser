@@ -162,6 +162,9 @@ shared void testParseEntryAbbrev() {
     assertEquals(pt("String->Integer"), `String->Integer`);
     assertEquals(pt("ceylon.language::String->ceylon.language::Integer"), `String->Integer`);
     
+    assert(is ParseError e=parseType { t = "String->Integer"; imports= imports; entryAbbreviation = false;});
+    assertEquals(e.message, "entry abbreviation not permitted");
+    
     // TODO precedence
 }
 
@@ -175,6 +178,12 @@ shared void testParseOptionalAbbrev() {
     };
     assertEquals(pt("String?"), `String?`);
     assertEquals(pt("ceylon.language::String?"), `String?`);
+    assert(is ParseError e = parseType { 
+        t = "String?"; 
+        imports = imports;
+        optionalAbbreviation = false; 
+    });
+    assertEquals(e.message, "optional abbreviation not permitted");
     
     assertEquals(pt("Integer|String?"), `Integer|String?`);
     assertEquals(pt("Integer|<String?>"), `Integer|<String?>`);
@@ -221,6 +230,13 @@ shared void testParseEmptyAbbrev() {
     assertEquals(pt("ceylon.language::Empty?"), `[]?`);
     assertEquals(pt("ceylon.language::Empty(*ceylon.language::Empty)"), `[](*[])`);
     
+    
+    assert(is ParseError e = parseType { 
+        t = "[]"; 
+        imports = imports;
+        emptyAbbreviation = false; 
+    });
+    assertEquals(e.message, "empty abbreviation not permitted");
 }
 
 test
@@ -232,6 +248,13 @@ shared void testParseSequenceAbbrev() {
     };
     assertEquals(pt("String[]"), `String[]`);
     assertEquals(pt("ceylon.language::String[]"), `String[]`);
+    
+    assert(is ParseError e = parseType { 
+        t = "String[]"; 
+        imports = imports;
+        sequenceAbbreviation = false; 
+    });
+    assertEquals(e.message, "sequence abbreviation not permitted");
     
     assertEquals(pt("Integer|String[]"), `Integer|String[]`);
     assertEquals(pt("Integer|<String[]>"), `Integer|<String[]>`);
@@ -266,6 +289,13 @@ shared void testParseSequenceAbbrevPlus() {
     assertEquals(pt("[String+]"), `[String+]`);
     assertEquals(pt("[ceylon.language::String+]"), `[String+]`);
     
+    assert(is ParseError e = parseType { 
+        t = "[String+]"; 
+        imports = imports;
+        tupleAbbreviation = false; 
+    });
+    assertEquals(e.message, "tuple abbreviation not permitted");
+    
     assertEquals(pt("[Integer|String+]"), `[Integer|String+]`);
     assertEquals(pt("Integer|<[String+]>"), `Integer|<[String+]>`);
     assertEquals(pt("[<Integer|String>+]"), `[<Integer|String>+]`);
@@ -278,8 +308,8 @@ shared void testParseSequenceAbbrevPlus() {
     assertEquals(pt("Foo&<[Bar+]>"), `Foo&<[Bar+]>`);
     assertEquals(pt("[<Foo&Bar>+]"), `[<Foo&Bar>+]`);
     
-    assert(is ParseError e = pt("[Foo->Bar+]"));
-    assertEquals(e.message, "unexpected token: expected ], found + (+) at index 9: [Foo->Bar+]");//Incorrect syntax: extraneous token + expecting closing bracket ]
+    assert(is ParseError e2 = pt("[Foo->Bar+]"));
+    assertEquals(e2.message, "unexpected token: expected ], found + (+) at index 9: [Foo->Bar+]");//Incorrect syntax: extraneous token + expecting closing bracket ]
     assertEquals(pt("Foo-><[Bar+]>"), `Foo-><[Bar+]>`);
     assertEquals(pt("[<Foo->Bar>+]"), `[<Foo->Bar>+]`);
     
@@ -295,6 +325,13 @@ shared void testParseSequenceAbbrevStar() {
     };
     assertEquals(pt("[String*]"), `[String*]`);
     
+    assert(is ParseError e = parseType { 
+        t = "[String*]"; 
+        imports = imports;
+        tupleAbbreviation = false; 
+    });
+    assertEquals(e.message, "tuple abbreviation not permitted");
+    
     assertEquals(pt("[Integer|String*]"), `[Integer|String*]`);
     assertEquals(pt("Integer|<[String*]>"), `Integer|<[String*]>`);
     assertEquals(pt("[<Integer|String>*]"), `[<Integer|String>*]`);
@@ -303,8 +340,8 @@ shared void testParseSequenceAbbrevStar() {
     assertEquals(pt("Foo&<[Bar*]>"), `Foo&<[Bar*]>`);
     assertEquals(pt("[<Foo&Bar>*]"), `[<Foo&Bar>*]`);
     
-    assert(is ParseError e = pt("[Foo->Bar*]"));
-    assertEquals(e.message, "unexpected token: expected ], found * (*) at index 9: [Foo->Bar*]");//Incorrect syntax: extraneous token * expecting closing bracket ]
+    assert(is ParseError e2 = pt("[Foo->Bar*]"));
+    assertEquals(e2.message, "unexpected token: expected ], found * (*) at index 9: [Foo->Bar*]");//Incorrect syntax: extraneous token * expecting closing bracket ]
     assertEquals(pt("Foo-><[Bar*]>"), `Foo-><[Bar*]>`);
     assertEquals(pt("[<Foo->Bar>*]"), `[<Foo->Bar>*]`);
     
@@ -320,6 +357,13 @@ shared void testParseIterableAbbrevPlus() {
     };
     assertEquals(pt("{String+}"), `{String+}`);
     
+    assert(is ParseError e = parseType { 
+        t = "{String+}"; 
+        imports = imports;
+        iterableAbbreviation = false; 
+    });
+    assertEquals(e.message, "iterable abbreviation not permitted");
+    
     assertEquals(pt("{Integer|String+}"), `{Integer|String+}`);
     assertEquals(pt("Integer|<{String+}>"), `Integer|<{String+}>`);
     assertEquals(pt("{<Integer|String>+}"), `{<Integer|String>+}`);
@@ -328,9 +372,9 @@ shared void testParseIterableAbbrevPlus() {
     assertEquals(pt("Foo&<{Bar+}>"), `Foo&<{Bar+}>`);
     assertEquals(pt("{<Foo&Bar>+}"), `{<Foo&Bar>+}`);
     
-    assert(is ParseError e = pt("{Foo->Bar+}"));
+    assert(is ParseError e2 = pt("{Foo->Bar+}"));
     //Incorrect syntax: extraneous token + expecting closing brace }
-    assertEquals(e.message, "badly formed iterable type");
+    assertEquals(e2.message, "badly formed iterable type");
     
     assertEquals(pt("Foo-><{Bar+}>"), `Foo-><{Bar+}>`);
     assertEquals(pt("{<Foo->Bar>+}"), `{<Foo->Bar>+}`);
@@ -376,7 +420,12 @@ shared void testParseTupleAbbrev() {
     assertEquals(pt("[String,Integer+]"), `[String,Integer+]`);
     assertEquals(pt("[String,Integer*]"), `[String,Integer*]`);
     
-    // TODO Tuple with defaults
+    assert(is ParseError e = parseType { 
+        t = "[String]"; 
+        imports = imports;
+        tupleAbbreviation = false; 
+    });
+    assertEquals(e.message, "tuple abbreviation not permitted");
     
 }
 
@@ -423,6 +472,13 @@ shared void testParseTupleLengthAbbrev() {
     
     assertEquals(pt("String[2]"), `String[2]`);
     
+    assert(is ParseError e = parseType { 
+        t = "String[2]"; 
+        imports = imports;
+        tupleAbbreviation = false; 
+    });
+    assertEquals(e.message, "tuple abbreviation not permitted");
+    
     assertEquals(pt("String|Integer[2]"), `String|Integer[2]`);
     assertEquals(pt("<String|Integer>[2]"), `<String|Integer>[2]`);
     assertEquals(pt("String|<Integer[2]>"), `String|<Integer[2]>`);
@@ -454,6 +510,13 @@ shared void testParseCallable() {
     assertEquals(pt("String(*[Boolean,Integer])"), `String(*[Boolean,Integer])`);
     assertEquals(pt("String(*Boolean[])"), `String(*Boolean[])`);
     assertEquals(pt("String(*Boolean[2])"), `String(*Boolean[2])`);
+    
+    assert(is ParseError e = parseType { 
+        t = "String()"; 
+        imports = imports;
+        callableAbbreviation = false; 
+    });
+    assertEquals(e.message, "callable abbreviation not permitted");
 }
 
 

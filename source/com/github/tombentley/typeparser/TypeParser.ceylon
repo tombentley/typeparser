@@ -41,6 +41,8 @@ import ceylon.language.meta.model {
        ceylon.language::String
        ceylon.language::true     // type Type, not the Value
        ceylon.collection::MutableSet<ceylon.json::Object>
+       
+
    """
 shared class TypeParser(
     imports=[], 
@@ -110,13 +112,16 @@ shared class TypeParser(
     
     Type<> parseType(Tokenizer tokenizer) {
         variable value result = parseUnionType(tokenizer);
-        if (entryAbbreviation && tokenizer.isType(dtRightArrow)) {
+        if (tokenizer.isType(dtRightArrow)) {
             result = parseEntryType(tokenizer, result);
         }
         return result;
     }
     
     Type<> parseEntryType(Tokenizer tokenizer, variable Type<Anything> keyType) {
+        if (!entryAbbreviation) {
+            throw ParseError("entry abbreviation not permitted");
+        }
         value itemType = parseUnionType(tokenizer);
         return `class Entry`.classApply<Anything,Nothing>(keyType, itemType);
     }
@@ -151,17 +156,15 @@ shared class TypeParser(
         while (tokenizer.current.type == dtQn
             || tokenizer.current.type == dtLsq
             || tokenizer.current.type == dtLparen) {
-            if (optionalAbbreviation && tokenizer.current.type == dtQn) {
+            if (tokenizer.current.type == dtQn) {
                 t = optionalType(tokenizer, t);
-            } else if (sequenceAbbreviation 
-                    && tokenizer.current.type == dtLsq) {
+            } else if (tokenizer.current.type == dtLsq) {
                 if (tokenizer.lookAhead(1).type == dtRsq) {
                     t = sequenceType(tokenizer, t);
                 } else if (tokenizer.lookAhead(1).type == dtDigit) {
                     t = tupleLength(tokenizer, t);
                 }
-            } else if (callableAbbreviation 
-                    && tokenizer.current.type == dtLparen) {
+            } else if (tokenizer.current.type == dtLparen) {
                 t = callableType(tokenizer, t);
             }
         }
@@ -170,12 +173,18 @@ shared class TypeParser(
     
     // OptionalType: PrimaryType '?'
     Type<> optionalType(Tokenizer tokenizer, Type<> baseType) {
+        if (!optionalAbbreviation) {
+            throw ParseError("optional abbreviation not permitted");
+        }
         tokenizer.expect(dtQn);
         return baseType.union(`Null`);
     }
     
     // SequenceType: PrimaryType "["
     Type<> sequenceType(Tokenizer tokenizer, Type<> elementType) {
+        if (!sequenceAbbreviation) {
+            throw ParseError("sequence abbreviation not permitted");
+        }
         tokenizer.expect(dtLsq);
         tokenizer.expect(dtRsq);
         return `interface Sequential`.interfaceApply<Anything>(elementType);
@@ -183,6 +192,9 @@ shared class TypeParser(
     
     // CallableType: PrimaryType "(" TypeList? | SpreadType ")"
     Type<> callableType(Tokenizer tokenizer, Type<> returnType) {
+        if (!callableAbbreviation) {
+            throw ParseError("callable abbreviation not permitted");
+        }
         tokenizer.expect(dtLparen);
         if (tokenizer.current.type == dtStar) {
             // SpreadType would imply 
@@ -220,16 +232,12 @@ shared class TypeParser(
                     tokenizer.consume();// ]
                     return `Empty`;
                 } else {
-                    throw ParseError("empty abbreviation not supported");
+                    throw ParseError("empty abbreviation not permitted");
                 }
             } else {
-                if (tupleAbbreviation) {
-                    return tupleType(tokenizer);
-                } else {
-                    throw ParseError("tuple abbreviation not supported");
-                }
+                return tupleType(tokenizer);
             }
-        } else if (iterableAbbreviation && tokenizer.current.type == dtLbr) {
+        } else if (tokenizer.current.type == dtLbr) {
             return iterableType(tokenizer);
         } else {
             // TODO Could be either QualifiedType or TupleType with a 
@@ -239,6 +247,9 @@ shared class TypeParser(
     }
     // IterableType: "{" UnionType ("*"|"+") "}"
     Type<> iterableType(Tokenizer tokenizer) {
+        if (!iterableAbbreviation) {
+            throw ParseError("iterable abbreviation not permitted");
+        }
         tokenizer.expect(dtLbr);
         value iteratedType = parseUnionType(tokenizer);
         Type<> absentType;
@@ -257,6 +268,9 @@ shared class TypeParser(
     
     
     Type<> tupleLength(Tokenizer tokenizer, Type<Anything> elementType) {
+        if (!tupleAbbreviation) {
+            throw ParseError("tuple abbreviation not permitted");
+        }
         tokenizer.expect(dtLsq);
         variable value d = tokenizer.expect(dtDigit);
         assert(exists c1 = d.first);
@@ -277,6 +291,9 @@ shared class TypeParser(
     
     // TupleType: "[" TypeList "]" | PrimaryType "[" DecimalLiteral "]"
     Type<> tupleType(Tokenizer tokenizer) {
+        if (!tupleAbbreviation) {
+            throw ParseError("tuple abbreviation not permitted");
+        }
         if (tokenizer.current.type == dtLsq) {
             // TODO TypeList
             tokenizer.consume();
@@ -596,9 +613,36 @@ shared class TypeParser(
 see(`function parseModel`)
 shared Type<>|ParseError parseType(String t, 
     Imports imports=[],
-    Boolean optionalAbbreviation=true,
-    Boolean entryAbbreviation=true) => TypeParser { 
+    optionalAbbreviation=true,
+    entryAbbreviation=true,
+    sequenceAbbreviation=true,
+    tupleAbbreviation=true,
+    callableAbbreviation=true,
+    iterableAbbreviation=true,
+    emptyAbbreviation=true) {
+    
+    "Whether to support optional abbreivation syntax `X?`."
+    Boolean optionalAbbreviation;
+    "Whether to support entry abbreivation syntax `X->Y`."
+    Boolean entryAbbreviation;
+    "Whether to support sequential abbreivation syntax `X[]`, `[Y*]` and `[Z+]`."
+    Boolean sequenceAbbreviation;
+    "Whether to support tuple abbreivation syntax `[X,Y]` and `X[3]`."
+    Boolean tupleAbbreviation;
+    "Whether to support callable abbreivation syntax `X(Y)`."
+    Boolean callableAbbreviation;
+    "Whether to support iterable abbreivation syntax `{X+}` and `{Y*}`."
+    Boolean iterableAbbreviation;
+    "Whether to support empty abbreivation syntax `[]`."
+    Boolean emptyAbbreviation;
+    return TypeParser { 
         imports = imports; 
-        optionalAbbreviation = optionalAbbreviation; 
-        entryAbbreviation = entryAbbreviation;
+        optionalAbbreviation=optionalAbbreviation;
+        entryAbbreviation=entryAbbreviation;
+        sequenceAbbreviation=sequenceAbbreviation;
+        tupleAbbreviation=tupleAbbreviation;
+        callableAbbreviation=callableAbbreviation;
+        iterableAbbreviation=iterableAbbreviation;
+        emptyAbbreviation=emptyAbbreviation;
     }.parse(t);
+}
