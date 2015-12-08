@@ -46,7 +46,7 @@ shared void testParseModelType() {
     assertEquals(parseModel("test.com.github.tombentley.typeparser::Gee.MemberInterface"), `Gee.MemberInterface`);
     
     assertEquals(parseModel("test.com.github.tombentley.typeparser::Foo&test.com.github.tombentley.typeparser::Bar"), `Foo&Bar`);
-    // TODO assertEquals(parseModel("test.com.github.tombentley.typeparser::Foo&test.com.github.tombentley.typeparser::Bar|ceylon.language::String"), `Foo&Bar|String`);
+    assertEquals(parseModel("test.com.github.tombentley.typeparser::Foo&test.com.github.tombentley.typeparser::Bar|ceylon.language::String"), `Foo&Bar|String`);
     assertEquals(parseModel("test.com.github.tombentley.typeparser::Foo|test.com.github.tombentley.typeparser::Bar"), `Foo|Bar`);
     assertEquals(parseModel("test.com.github.tombentley.typeparser::Foo|test.com.github.tombentley.typeparser::Bar|ceylon.language::String"), `Foo|Bar|String`);
     

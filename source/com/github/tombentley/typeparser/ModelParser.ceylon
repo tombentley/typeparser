@@ -41,7 +41,7 @@ class ModelParser() {
     shared Model|Type<>|ParseError parse(String input) {
         try {
             value tokenizer = Tokenizer(input);
-            value result = intersectionModel(tokenizer);
+            value result = unionModel(tokenizer);
             tokenizer.expect(dtEoi);
             return result;
         } catch (ParseError e) {
@@ -49,28 +49,10 @@ class ModelParser() {
         }
     }
     
-    """intersectionType ::= unionType ('&' intersectionType) ;"""
-    Model|Type<> intersectionModel(Tokenizer tokenizer) {
-        variable value result = unionModel(tokenizer);
-        if (tokenizer.isType(dtAnd)) {
-            if (is Type<> u1=result) {
-                value u2 = intersectionModel(tokenizer);
-                if (is Type<> u2) {
-                    result = u1.intersection(u2);
-                } else {
-                    throw ParseError("expected type in union: ``u2``");
-                }
-            } else {
-                throw ParseError("expected type in union: ``result``");
-            }
-        }
-        return result;
-    }
-    
-    """unionType ::= simpleType ('|' intersectionType) ;"""
+    """unionType ::= intersectionModel ('|' intersectionModel) ;"""
     Model|Type<> unionModel(Tokenizer tokenizer) {
-        variable value result = qualifiedModel(tokenizer);
-        if (tokenizer.isType(dtOr)) {
+        variable value result = intersectionModel(tokenizer);
+        while (tokenizer.isType(dtOr)) {
             if (is Type<> u1=result) {
                 value u2 = intersectionModel(tokenizer);
                 if (is Type<> u2) {
@@ -84,6 +66,26 @@ class ModelParser() {
         }
         return result;
     }
+    
+    """intersectionType ::= simpleType ('&' simpleType) ;"""
+    Model|Type<> intersectionModel(Tokenizer tokenizer) {
+        variable value result = qualifiedModel(tokenizer);
+        while (tokenizer.isType(dtAnd)) {
+            if (is Type<> u1=result) {
+                value u2 = qualifiedModel(tokenizer);
+                if (is Type<> u2) {
+                    result = u1.intersection(u2);
+                } else {
+                    throw ParseError("expected type in union: ``u2``");
+                }
+            } else {
+                throw ParseError("expected type in union: ``result``");
+            }
+        }
+        return result;
+    }
+    
+    
     
     """qualifiedModel ::= qualifiedDeclaration typeArguments? ('.' declarationName  typeArguments?)* ;"""
     Model|Type<> qualifiedModel(Tokenizer tokenizer) {
@@ -257,7 +259,7 @@ class ModelParser() {
    Some examples:
    
        ceylon.language::String
-       ceylon.language::true     // type Type, not the Value
+       ceylon.language::true     // the Type, not the Value
        ceylon.collection::MutableSet<ceylon.json::Object>
        ceylon.language::String|ceylon.language::Integer
    """
