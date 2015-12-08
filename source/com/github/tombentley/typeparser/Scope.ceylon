@@ -57,4 +57,28 @@ class Scope(imports=[]/*, allowFq = imports == []*/) {
         }
         return null;
     }
+    
+    shared actual String string {
+        StringBuilder sb = StringBuilder();
+        sb.append("imports ");
+        variable Boolean first = false;
+        for (item in imports) {
+            if (first) {
+                sb.append(",");
+            } else {
+                first = true;
+            }
+            switch (item)
+            case (is Package) {
+                sb.append(item.name).append(" { ... }");
+            }
+            case (is String->ClassOrInterfaceDeclaration) {
+                sb.append(item.key).append("=").append(item.item.qualifiedName);
+            }
+            case (is ClassOrInterfaceDeclaration) {
+                sb.append(item.qualifiedName);
+            }
+        }
+        return sb.string;
+    }
 }

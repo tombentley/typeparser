@@ -12,8 +12,11 @@ import com.github.tombentley.typeparser {
 interface Foo {
 }
 interface Bar {}
+
+suppressWarnings("unusedDeclaration")
 interface Baz<T> {}
 
+suppressWarnings("unusedDeclaration")
 interface Outer<X> {
     shared interface Member<Y> {}
 }
@@ -130,6 +133,8 @@ shared void testParseTypesWithImports() {
     assertEquals(parseType("nothing", imports), `nothing`.type);
     assertEquals(parseType("empty", imports), `empty`.type);
     assertEquals(parseType("String|Integer", imports), `String|Integer`);
+    assert(is ParseError e = parseType("kdnbkfbn", imports));
+    assertEquals(e.message, "type does not exist: 'kdnbkfbn' in 'imports ceylon.language { ... }'");
     
     imports = [`package`, `package ceylon.language`];
     assertEquals(parseType("Foo", imports), `Foo`);
@@ -155,6 +160,7 @@ shared void testParseEntryAbbrev() {
     };
     
     assertEquals(pt("String->Integer"), `String->Integer`);
+    assertEquals(pt("ceylon.language::String->ceylon.language::Integer"), `String->Integer`);
     
     // TODO precedence
 }
@@ -168,10 +174,14 @@ shared void testParseOptionalAbbrev() {
         imports = imports; 
     };
     assertEquals(pt("String?"), `String?`);
+    assertEquals(pt("ceylon.language::String?"), `String?`);
     
     assertEquals(pt("Integer|String?"), `Integer|String?`);
     assertEquals(pt("Integer|<String?>"), `Integer|<String?>`);
     assertEquals(pt("<Integer|String?>"), `<Integer|String?>`);
+    assertEquals(pt("ceylon.language::Integer|ceylon.language::String?"), `Integer|String?`);
+    assertEquals(pt("ceylon.language::Integer|<ceylon.language::String?>"), `Integer|<String?>`);
+    assertEquals(pt("<ceylon.language::Integer|ceylon.language::String?>"), `<Integer|String?>`);
     
     assertEquals(pt("Foo&Bar?"), `Foo&Bar?`);
     assertEquals(pt("Foo&<Bar?>"), `Foo&<Bar?>`);
@@ -180,6 +190,18 @@ shared void testParseOptionalAbbrev() {
     assertEquals(pt("Foo->Bar?"), `Foo->Bar?`);
     assertEquals(pt("Foo-><Bar?>"), `Foo-><Bar?>`);
     assertEquals(pt("<Foo->Bar>?"), `<Foo->Bar>?`);
+    
+    assertEquals(pt("String??"), `String??`);
+    assertEquals(pt("String[]?"), `String[]?`);
+    assertEquals(pt("String?[]"), `String?[]`);
+    assertEquals(pt("String?[]?"), `String?[]?`);
+    assertEquals(pt("String[]?[]"), `String[]?[]`);
+    
+    assertEquals(pt("ceylon.language::String??"), `String??`);
+    assertEquals(pt("ceylon.language::String[]?"), `String[]?`);
+    assertEquals(pt("ceylon.language::String?[]"), `String?[]`);
+    assertEquals(pt("ceylon.language::String?[]?"), `String?[]?`);
+    assertEquals(pt("ceylon.language::String[]?[]"), `String[]?[]`);
     
     // TODO Callable
 }
@@ -195,6 +217,10 @@ shared void testParseEmptyAbbrev() {
     assertEquals(pt("[]?"), `[]?`);
     assertEquals(pt("[](*[])"), `[](*[])`);
     
+    assertEquals(pt("ceylon.language::Empty"), `[]`);
+    assertEquals(pt("ceylon.language::Empty?"), `[]?`);
+    assertEquals(pt("ceylon.language::Empty(*ceylon.language::Empty)"), `[](*[])`);
+    
 }
 
 test
@@ -205,10 +231,15 @@ shared void testParseSequenceAbbrev() {
         imports = imports;
     };
     assertEquals(pt("String[]"), `String[]`);
+    assertEquals(pt("ceylon.language::String[]"), `String[]`);
     
     assertEquals(pt("Integer|String[]"), `Integer|String[]`);
     assertEquals(pt("Integer|<String[]>"), `Integer|<String[]>`);
     assertEquals(pt("<Integer|String[]>"), `<Integer|String[]>`);
+    
+    assertEquals(pt("ceylon.language::Integer|ceylon.language::String[]"), `Integer|String[]`);
+    assertEquals(pt("ceylon.language::Integer|<ceylon.language::String[]>"), `Integer|<String[]>`);
+    assertEquals(pt("<ceylon.language::Integer|ceylon.language::String[]>"), `<Integer|String[]>`);
     
     assertEquals(pt("Foo&Bar[]"), `Foo&Bar[]`);
     assertEquals(pt("Foo&<Bar[]>"), `Foo&<Bar[]>`);
@@ -217,6 +248,10 @@ shared void testParseSequenceAbbrev() {
     assertEquals(pt("Foo->Bar[]"), `Foo->Bar[]`);
     assertEquals(pt("Foo-><Bar[]>"), `Foo-><Bar[]>`);
     assertEquals(pt("<Foo->Bar>[]"), `<Foo->Bar>[]`);
+    
+    assertEquals(pt("test.com.github.tombentley.typeparser::Foo->test.com.github.tombentley.typeparser::Bar[]"), `Foo->Bar[]`);
+    assertEquals(pt("test.com.github.tombentley.typeparser::Foo-><test.com.github.tombentley.typeparser::Bar[]>"), `Foo-><Bar[]>`);
+    assertEquals(pt("<test.com.github.tombentley.typeparser::Foo->test.com.github.tombentley.typeparser::Bar>[]"), `<Foo->Bar>[]`);
     
     // TODO Callable
 }
@@ -229,16 +264,22 @@ shared void testParseSequenceAbbrevPlus() {
         imports = imports;
     };
     assertEquals(pt("[String+]"), `[String+]`);
+    assertEquals(pt("[ceylon.language::String+]"), `[String+]`);
     
     assertEquals(pt("[Integer|String+]"), `[Integer|String+]`);
     assertEquals(pt("Integer|<[String+]>"), `Integer|<[String+]>`);
     assertEquals(pt("[<Integer|String>+]"), `[<Integer|String>+]`);
     
+    assertEquals(pt("[ceylon.language::Integer|ceylon.language::String+]"), `[Integer|String+]`);
+    assertEquals(pt("ceylon.language::Integer|<[ceylon.language::String+]>"), `Integer|<[String+]>`);
+    assertEquals(pt("[<ceylon.language::Integer|ceylon.language::String>+]"), `[<Integer|String>+]`);
+    
     assertEquals(pt("[Foo&Bar+]"), `[Foo&Bar+]`);
     assertEquals(pt("Foo&<[Bar+]>"), `Foo&<[Bar+]>`);
     assertEquals(pt("[<Foo&Bar>+]"), `[<Foo&Bar>+]`);
     
-    //assertEquals(pt("[Foo->Bar+]"), `[Foo->Bar+]`);
+    assert(is ParseError e = pt("[Foo->Bar+]"));
+    assertEquals(e.message, "unexpected token: expected ], found + (+) at index 9: [Foo->Bar+]");//Incorrect syntax: extraneous token + expecting closing bracket ]
     assertEquals(pt("Foo-><[Bar+]>"), `Foo-><[Bar+]>`);
     assertEquals(pt("[<Foo->Bar>+]"), `[<Foo->Bar>+]`);
     
@@ -262,7 +303,8 @@ shared void testParseSequenceAbbrevStar() {
     assertEquals(pt("Foo&<[Bar*]>"), `Foo&<[Bar*]>`);
     assertEquals(pt("[<Foo&Bar>*]"), `[<Foo&Bar>*]`);
     
-    //assertEquals(pt("[Foo->Bar*]"), `[Foo->Bar*]`);
+    assert(is ParseError e = pt("[Foo->Bar*]"));
+    assertEquals(e.message, "unexpected token: expected ], found * (*) at index 9: [Foo->Bar*]");//Incorrect syntax: extraneous token * expecting closing bracket ]
     assertEquals(pt("Foo-><[Bar*]>"), `Foo-><[Bar*]>`);
     assertEquals(pt("[<Foo->Bar>*]"), `[<Foo->Bar>*]`);
     
@@ -286,7 +328,10 @@ shared void testParseIterableAbbrevPlus() {
     assertEquals(pt("Foo&<{Bar+}>"), `Foo&<{Bar+}>`);
     assertEquals(pt("{<Foo&Bar>+}"), `{<Foo&Bar>+}`);
     
-    //assertEquals(pt("{Foo->Bar+}"), `{Foo->Bar+}`);
+    assert(is ParseError e = pt("{Foo->Bar+}"));
+    //Incorrect syntax: extraneous token + expecting closing brace }
+    assertEquals(e.message, "badly formed iterable type");
+    
     assertEquals(pt("Foo-><{Bar+}>"), `Foo-><{Bar+}>`);
     assertEquals(pt("{<Foo->Bar>+}"), `{<Foo->Bar>+}`);
     
@@ -310,7 +355,9 @@ shared void testParseIterableAbbrevStar() {
     assertEquals(pt("Foo&<{Bar*}>"), `Foo&<{Bar*}>`);
     assertEquals(pt("{<Foo&Bar>*}"), `{<Foo&Bar>*}`);
     
-    //assertEquals(pt("{Foo->Bar*}"), `{Foo->Bar*}`);
+    assert(is ParseError e = pt("{Foo->Bar*}"));
+    //Incorrect syntax: extraneous token * expecting closing brace }
+    assertEquals(e.message, "badly formed iterable type");
     assertEquals(pt("Foo-><{Bar*}>"), `Foo-><{Bar*}>`);
     assertEquals(pt("{<Foo->Bar>*}"), `{<Foo->Bar>*}`);
     
@@ -382,6 +429,9 @@ shared void testParseTupleLengthAbbrev() {
     
     assertEquals(pt("String[2][2]"), `String[2][2]`);
     assertEquals(pt("String|Integer[2][2]"), `String|Integer[2][2]`);
+    assertEquals(pt("<String|Integer>[2][2]"), `<String|Integer>[2][2]`);
+    assertEquals(pt("<String|Integer[2]>[2]"), `<String|Integer[2]>[2]`);
+    assertEquals(pt("String|<Integer[2]>[2]"), `String|<Integer[2]>[2]`);
     assertEquals(pt("Foo&Bar[2][2]"), `Foo&Bar[2][2]`);
 }
 
@@ -404,13 +454,10 @@ shared void testParseCallable() {
     assertEquals(pt("String(*[Boolean,Integer])"), `String(*[Boolean,Integer])`);
     assertEquals(pt("String(*Boolean[])"), `String(*Boolean[])`);
     assertEquals(pt("String(*Boolean[2])"), `String(*Boolean[2])`);
-    
-    
 }
 
 
 
-// TODO test with grouped type expressions
 // TODO test for precedence
-
 // TODO negative tests
+// TODO tests with abbreviations turned off

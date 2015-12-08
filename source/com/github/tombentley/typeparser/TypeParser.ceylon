@@ -1,3 +1,6 @@
+import ceylon.collection {
+    ArrayList
+}
 import ceylon.language.meta {
     modules
 }
@@ -9,15 +12,10 @@ import ceylon.language.meta.declaration {
 }
 import ceylon.language.meta.model {
     ClassOrInterface,
-    ClassModel,
     nothingType,
-    InterfaceModel,
     Type,
     Member,
     TypeApplicationException
-}
-import ceylon.collection {
-    ArrayList
 }
 
 """
@@ -149,18 +147,25 @@ shared class TypeParser(
     // SequenceType: PrimaryType "[" "]"
     // CallableType: PrimaryType "(" TypeList? | SpreadType ")"
     Type<> primaryType(Tokenizer tokenizer) {
-        Type<> t = atomicType(tokenizer);
-        // TODO need backtracking here
-        if (optionalAbbreviation && tokenizer.current.type == dtQn) {
-            return optionalType(tokenizer, t);
-        } else if (sequenceAbbreviation && tokenizer.current.type == dtLsq) {
-            return sequenceType(tokenizer, t);
-        } else if (callableAbbreviation && tokenizer.current.type == dtLparen) {
-            return callableType(tokenizer, t);
-        } else {
-            return t;
+        variable Type<> t = atomicType(tokenizer);
+        while (tokenizer.current.type == dtQn
+            || tokenizer.current.type == dtLsq
+            || tokenizer.current.type == dtLparen) {
+            if (optionalAbbreviation && tokenizer.current.type == dtQn) {
+                t = optionalType(tokenizer, t);
+            } else if (sequenceAbbreviation 
+                    && tokenizer.current.type == dtLsq) {
+                if (tokenizer.lookAhead(1).type == dtRsq) {
+                    t = sequenceType(tokenizer, t);
+                } else if (tokenizer.lookAhead(1).type == dtDigit) {
+                    t = tupleLength(tokenizer, t);
+                }
+            } else if (callableAbbreviation 
+                    && tokenizer.current.type == dtLparen) {
+                t = callableType(tokenizer, t);
+            }
         }
-        
+        return t;
     }
     
     // OptionalType: PrimaryType '?'
@@ -250,6 +255,26 @@ shared class TypeParser(
         return `interface Iterable`.interfaceApply<Anything>(*[iteratedType, absentType]);
     }
     
+    
+    Type<> tupleLength(Tokenizer tokenizer, Type<Anything> elementType) {
+        tokenizer.expect(dtLsq);
+        variable value d = tokenizer.expect(dtDigit);
+        assert(exists c1 = d.first);
+        variable value int = c1.offset('0');
+        while (tokenizer.current.type == dtDigit) {
+                d = tokenizer.expect(dtDigit);
+                assert(exists c2 = d.first); 
+                int = 10 * int + c2.offset('0');
+            }
+        tokenizer.expect(dtRsq);
+        variable Type<> t = `Empty`;
+        while (int > 0) {
+                t = `class Tuple`.apply<Anything>(*[elementType, elementType, t]);
+                int--;
+            }
+        return t;
+    }
+    
     // TupleType: "[" TypeList "]" | PrimaryType "[" DecimalLiteral "]"
     Type<> tupleType(Tokenizer tokenizer) {
         if (tokenizer.current.type == dtLsq) {
@@ -260,22 +285,7 @@ shared class TypeParser(
             return typeList;
         } else {
             value elementType = primaryType(tokenizer);
-            tokenizer.expect(dtLsq);
-            variable value d = tokenizer.expect(dtDigit);
-            assert(exists c1 = d.first); 
-            variable value int = '0'.offset(c1);
-            while (tokenizer.current.type == dtDigit) {
-                d = tokenizer.expect(dtDigit);
-                assert(exists c2 = d.first); 
-                int = 10 * int + '0'.offset(c2);
-            }
-            tokenizer.expect(dtRsq);
-            variable Type<> t = `Empty`;
-            while (int > 0) {
-                t = `class Tuple`.apply(*[elementType, elementType, t]);
-                int--;
-            }
-            return t;
+            return tupleLength(tokenizer, elementType);
         }
         
     }
