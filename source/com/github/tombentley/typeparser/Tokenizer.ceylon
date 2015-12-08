@@ -41,6 +41,36 @@ class Tokenizer(input) {
             case ('>') {
                 return Token(dtGt, char.string, ii);
             }
+            case ('?') {
+                return Token(dtQn, char.string, ii);
+            }
+            case ('*') {
+                return Token(dtStar, char.string, ii);
+            }
+            case ('+') {
+                return Token(dtPlus, char.string, ii);
+            }
+            case ('[') {
+                return Token(dtLsq, char.string, ii);
+            }
+            case (']') {
+                return Token(dtRsq, char.string, ii);
+            }
+            case ('{') {
+                return Token(dtLbr, char.string, ii);
+            }
+            case ('}') {
+                return Token(dtRbr, char.string, ii);
+            }
+            case ('(') {
+                return Token(dtLparen, char.string, ii);
+            }
+            case (')') {
+                return Token(dtRparen, char.string, ii);
+            }
+            case ('=') {
+                return Token(dtEquals, char.string, ii);
+            }
             case (':') {
                 // check next is also :
                 if (exists char2 = input[ii + 1]) {
@@ -52,6 +82,43 @@ class Tokenizer(input) {
                 }
                 throw ParseError("unexpected end of input");
             }
+            case ('-') {
+                // check next is >
+                if (exists char2 = input[ii + 1]) {
+                    if (char2 == '>') {
+                        return Token(dtRightArrow, input[ii:2], ii);
+                    } else {
+                        throw ParseError("tokenization error, expected ->, not -``char2`` at index ``ii``: ``input``");
+                    }
+                }
+                throw ParseError("unexpected end of input");
+            }
+            /*case ('i') {
+                // check next is n
+                if (exists char2 = input[ii + 1]) {
+                    if (char2 == 'n') {
+                        return Token(dtIn, input[ii:2], ii);
+                    } else {
+                        throw ParseError("tokenization error, expected in, not i``char2`` at index ``ii``: ``input``");
+                    }
+                }
+                throw ParseError("unexpected end of input");
+            }
+            case ('o') {
+                // check following are ut
+                if (exists char2 = input[ii + 1]) {
+                    if (exists char3 = input[ii + 2]) {
+                        if (char2 == 'u' 
+                            && char3 == 't') {
+                            return Token(dtOut, input[ii:2], ii);
+                        } else {
+                            throw ParseError("tokenization error, expected in, not o``char2````char3 `` at index ``ii``: ``input``");
+                        }
+                    }
+                    throw ParseError("unexpected end of input");
+                }
+                throw ParseError("unexpected end of input");
+            }*/
             else {
                 if ('0' <= char <= '9') {
                     return Token(dtDigit, char.string, ii);

@@ -145,7 +145,258 @@ shared void testParseTypesWithImports() {
     `Outer<String>.Member<Integer>`);
 }
 
+test
+shared void testParseEntryAbbrev() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+        entryAbbreviation = true; 
+    };
+    
+    assertEquals(pt("String->Integer"), `String->Integer`);
+    
+    // TODO precedence
+}
 
-// TODO test with member types
+
+test
+shared void testParseOptionalAbbrev() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports; 
+    };
+    assertEquals(pt("String?"), `String?`);
+    
+    assertEquals(pt("Integer|String?"), `Integer|String?`);
+    assertEquals(pt("Integer|<String?>"), `Integer|<String?>`);
+    assertEquals(pt("<Integer|String?>"), `<Integer|String?>`);
+    
+    assertEquals(pt("Foo&Bar?"), `Foo&Bar?`);
+    assertEquals(pt("Foo&<Bar?>"), `Foo&<Bar?>`);
+    assertEquals(pt("<Foo&Bar>?"), `<Foo&Bar>?`);
+    
+    assertEquals(pt("Foo->Bar?"), `Foo->Bar?`);
+    assertEquals(pt("Foo-><Bar?>"), `Foo-><Bar?>`);
+    assertEquals(pt("<Foo->Bar>?"), `<Foo->Bar>?`);
+    
+    // TODO Callable
+}
+
+test
+shared void testParseSequenceAbbrev() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    assertEquals(pt("String[]"), `String[]`);
+    
+    assertEquals(pt("Integer|String[]"), `Integer|String[]`);
+    assertEquals(pt("Integer|<String[]>"), `Integer|<String[]>`);
+    assertEquals(pt("<Integer|String[]>"), `<Integer|String[]>`);
+    
+    assertEquals(pt("Foo&Bar[]"), `Foo&Bar[]`);
+    assertEquals(pt("Foo&<Bar[]>"), `Foo&<Bar[]>`);
+    assertEquals(pt("<Foo&Bar>[]"), `<Foo&Bar>[]`);
+    
+    assertEquals(pt("Foo->Bar[]"), `Foo->Bar[]`);
+    assertEquals(pt("Foo-><Bar[]>"), `Foo-><Bar[]>`);
+    assertEquals(pt("<Foo->Bar>[]"), `<Foo->Bar>[]`);
+    
+    // TODO Callable
+}
+
+test
+shared void testParseSequenceAbbrevPlus() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    assertEquals(pt("[String+]"), `[String+]`);
+    
+    assertEquals(pt("[Integer|String+]"), `[Integer|String+]`);
+    assertEquals(pt("Integer|<[String+]>"), `Integer|<[String+]>`);
+    assertEquals(pt("[<Integer|String>+]"), `[<Integer|String>+]`);
+    
+    assertEquals(pt("[Foo&Bar+]"), `[Foo&Bar+]`);
+    assertEquals(pt("Foo&<[Bar+]>"), `Foo&<[Bar+]>`);
+    assertEquals(pt("[<Foo&Bar>+]"), `[<Foo&Bar>+]`);
+    
+    //assertEquals(pt("[Foo->Bar+]"), `[Foo->Bar+]`);
+    assertEquals(pt("Foo-><[Bar+]>"), `Foo-><[Bar+]>`);
+    assertEquals(pt("[<Foo->Bar>+]"), `[<Foo->Bar>+]`);
+    
+    // TODO Callable
+}
+
+test
+shared void testParseSequenceAbbrevStar() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    assertEquals(pt("[String*]"), `[String*]`);
+    
+    assertEquals(pt("[Integer|String*]"), `[Integer|String*]`);
+    assertEquals(pt("Integer|<[String*]>"), `Integer|<[String*]>`);
+    assertEquals(pt("[<Integer|String>*]"), `[<Integer|String>*]`);
+    
+    assertEquals(pt("[Foo&Bar*]"), `[Foo&Bar*]`);
+    assertEquals(pt("Foo&<[Bar*]>"), `Foo&<[Bar*]>`);
+    assertEquals(pt("[<Foo&Bar>*]"), `[<Foo&Bar>*]`);
+    
+    //assertEquals(pt("[Foo->Bar*]"), `[Foo->Bar*]`);
+    assertEquals(pt("Foo-><[Bar*]>"), `Foo-><[Bar*]>`);
+    assertEquals(pt("[<Foo->Bar>*]"), `[<Foo->Bar>*]`);
+    
+    // TODO Callable
+}
+
+test
+shared void testParseIterableAbbrevPlus() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    assertEquals(pt("{String+}"), `{String+}`);
+    
+    assertEquals(pt("{Integer|String+}"), `{Integer|String+}`);
+    assertEquals(pt("Integer|<{String+}>"), `Integer|<{String+}>`);
+    assertEquals(pt("{<Integer|String>+}"), `{<Integer|String>+}`);
+    
+    assertEquals(pt("{Foo&Bar+}"), `{Foo&Bar+}`);
+    assertEquals(pt("Foo&<{Bar+}>"), `Foo&<{Bar+}>`);
+    assertEquals(pt("{<Foo&Bar>+}"), `{<Foo&Bar>+}`);
+    
+    //assertEquals(pt("{Foo->Bar+}"), `{Foo->Bar+}`);
+    assertEquals(pt("Foo-><{Bar+}>"), `Foo-><{Bar+}>`);
+    assertEquals(pt("{<Foo->Bar>+}"), `{<Foo->Bar>+}`);
+    
+    // TODO Callable
+}
+
+test
+shared void testParseIterableAbbrevStar() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    assertEquals(pt("{String*}"), `{String*}`);
+    
+    assertEquals(pt("{Integer|String*}"), `{Integer|String*}`);
+    assertEquals(pt("Integer|<{String*}>"), `Integer|<{String*}>`);
+    assertEquals(pt("{<Integer|String>*}"), `{<Integer|String>*}`);
+    
+    assertEquals(pt("{Foo&Bar*}"), `{Foo&Bar*}`);
+    assertEquals(pt("Foo&<{Bar*}>"), `Foo&<{Bar*}>`);
+    assertEquals(pt("{<Foo&Bar>*}"), `{<Foo&Bar>*}`);
+    
+    //assertEquals(pt("{Foo->Bar*}"), `{Foo->Bar*}`);
+    assertEquals(pt("Foo-><{Bar*}>"), `Foo-><{Bar*}>`);
+    assertEquals(pt("{<Foo->Bar>*}"), `{<Foo->Bar>*}`);
+    
+    // TODO Callable
+}
+
+test
+shared void testParseTupleAbbrev() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    assertEquals(pt("[String]"), `[String]`);
+    assertEquals(pt("[String,Integer]"), `[String,Integer]`);
+    assertEquals(pt("[String,Integer+]"), `[String,Integer+]`);
+    assertEquals(pt("[String,Integer*]"), `[String,Integer*]`);
+    
+    // TODO Tuple with defaults
+    
+}
+
+test
+shared void testParseTupleWithDefaults() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    assertEquals(pt("[String=]"), `[String=]`);
+    assertEquals(pt("[String,Integer=]"), `[String,Integer=]`);
+    assertEquals(pt("[String=,Integer=]"), `[String=,Integer=]`);
+    assert(is ParseError e=pt("[String=,Integer]"));
+    assertEquals(e.message, "required element must occur after defaulted elements in a tuple type");
+    
+    assertEquals(pt("[String=,Integer*]"), `[String=,Integer*]`);
+    assert(is ParseError e2=pt("[String=,Integer+]"));
+    assertEquals(e2.message, "nonempty variadic element must occur after defaulted elements in a tuple type");
+    
+    assertEquals(pt("[String,Integer,Boolean]"), `[String,Integer,Boolean]`);
+    assertEquals(pt("[String,Integer,Boolean=]"), `[String,Integer,Boolean=]`);
+    assertEquals(pt("[String,Integer=,Boolean=]"), `[String,Integer=,Boolean=]`);
+    assertEquals(pt("[String=,Integer=,Boolean=]"), `[String=,Integer=,Boolean=]`);
+    
+    assert(is ParseError e3=pt("[String=,Integer=,Boolean]"));
+    assertEquals(e3.message, "required element must occur after defaulted elements in a tuple type");
+    assert(is ParseError e4=pt("[String=,Integer,Boolean]"));
+    assertEquals(e4.message, "required element must occur after defaulted elements in a tuple type");
+    assert(is ParseError e5=pt("[String,Integer=,Boolean]"));
+    assertEquals(e5.message, "required element must occur after defaulted elements in a tuple type");
+    
+    
+    assertEquals(pt("[Outer<String>.Member<Integer>=]"), `[Outer<String>.Member<Integer>=]`);
+}
+
+test
+shared void testParseTupleLengthAbbrev() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    
+    assertEquals(pt("String[2]"), `String[2]`);
+    
+    assertEquals(pt("String|Integer[2]"), `String|Integer[2]`);
+    assertEquals(pt("<String|Integer>[2]"), `<String|Integer>[2]`);
+    assertEquals(pt("String|<Integer[2]>"), `String|<Integer[2]>`);
+    
+    assertEquals(pt("String[2][2]"), `String[2][2]`);
+    assertEquals(pt("String|Integer[2][2]"), `String|Integer[2][2]`);
+    assertEquals(pt("Foo&Bar[2][2]"), `Foo&Bar[2][2]`);
+}
+
+test
+shared void testParseCallable() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports;
+    };
+    
+    assertEquals(pt("String()"), `String()`);
+    assertEquals(pt("String(Boolean)"), `String(Boolean)`);
+    assertEquals(pt("String(Boolean=)"), `String(Boolean=)`);
+    assertEquals(pt("String(Boolean,Integer)"), `String(Boolean,Integer)`);
+    assertEquals(pt("String(Boolean,Integer=)"), `String(Boolean,Integer=)`);
+    assertEquals(pt("String(Boolean=,Integer=)"), `String(Boolean=,Integer=)`);
+    
+    assertEquals(pt("String(*[Boolean,Integer])"), `String(*[Boolean,Integer])`);
+    assertEquals(pt("String(*Boolean[])"), `String(*Boolean[])`);
+    assertEquals(pt("String(*Boolean[2])"), `String(*Boolean[2])`);
+    
+    
+}
+
+
+
 // TODO test with grouped type expressions
 // TODO test for precedence
+
+// TODO negative tests

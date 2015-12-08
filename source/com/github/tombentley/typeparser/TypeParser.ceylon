@@ -16,6 +16,9 @@ import ceylon.language.meta.model {
     Member,
     TypeApplicationException
 }
+import ceylon.collection {
+    ArrayList
+}
 
 """
    Parses a "type expression" returning its [[Type]] model. 
@@ -43,10 +46,29 @@ import ceylon.language.meta.model {
    """
 shared class TypeParser(
     imports=[], 
-    fqResolvableModules = modules.list) {
+    fqResolvableModules = modules.list,
+    optionalAbbreviation=true,
+    entryAbbreviation=true,
+    sequenceAbbreviation=true,
+    tupleAbbreviation=true,
+    callableAbbreviation=true,
+    iterableAbbreviation=true,
+    emptyAbbreviation=true) {
     
-    // TODO fix precedence
-    // TODO support abbreviated types!
+    "Whether to support optional abbreivation syntax `X?`."
+    Boolean optionalAbbreviation;
+    "Whether to support entry abbreivation syntax `X->Y`."
+    Boolean entryAbbreviation;
+    "Whether to support sequential abbreivation syntax `X[]`, `[Y*]` and `[Z+]`."
+    Boolean sequenceAbbreviation;
+    "Whether to support tuple abbreivation syntax `[X,Y]` and `X[3]`."
+    Boolean tupleAbbreviation;
+    "Whether to support callable abbreivation syntax `X(Y)`."
+    Boolean callableAbbreviation;
+    "Whether to support iterable abbreivation syntax `{X+}` and `{Y*}`."
+    Boolean iterableAbbreviation;
+    "Whether to support empty abbreivation syntax `[]`."
+    Boolean emptyAbbreviation;
     
     /*
      
@@ -79,73 +101,334 @@ shared class TypeParser(
     shared Type<>|ParseError parse(String input) {
         try {
             value tokenizer = Tokenizer(input);
-            value result = intersectionType(tokenizer);
+            value result=parseType(tokenizer);
             tokenizer.expect(dtEoi);
             return result;
         } catch (ParseError e) {
-            return e;
+            throw e;
         }
     }
     
-    """intersectionType ::= unionType ('&' intersectionType) ;"""
-    Type<> intersectionType(Tokenizer tokenizer) {
-        variable Type<> result = unionType(tokenizer);
-        if (tokenizer.isType(dtAnd)) {
-            Type<> u2 = unionType(tokenizer);
-            result = result.intersection(u2);
+    
+    Type<> parseType(Tokenizer tokenizer) {
+        variable value result = parseUnionType(tokenizer);
+        if (entryAbbreviation && tokenizer.isType(dtRightArrow)) {
+            result = parseEntryType(tokenizer, result);
         }
         return result;
     }
     
+    Type<> parseEntryType(Tokenizer tokenizer, variable Type<Anything> keyType) {
+        value itemType = parseUnionType(tokenizer);
+        return `class Entry`.classApply<Anything,Nothing>(keyType, itemType);
+    }
+    
     """unionType ::= simpleType ('|' intersectionType) ;"""
-    Type<> unionType(Tokenizer tokenizer) {
-        variable Type<> result = simpleType(tokenizer);
+    Type<> parseUnionType(Tokenizer tokenizer) {
+        variable Type<> result = parseIntersectionType(tokenizer);
         if (tokenizer.isType(dtOr)) {
-            Type<> u2 = intersectionType(tokenizer);
+            Type<> u2 = parseIntersectionType(tokenizer);
             result = result.union(u2);
         }
         return result;
     }
     
-    """simpleType ::= declaration typeArguments? ('.' typeName typeArguments?)* ;"""
-    Type<> simpleType(Tokenizer tokenizer) {
-        value d = declaration(tokenizer);
-        Type<>[] ta = if (tokenizer.current.type == dtLt) then typeArguments(tokenizer) else [];
-        
-        if (is ClassOrInterfaceDeclaration d) {
-            variable ClassOrInterface<> x;
-            try {
-                x = d.apply<Anything>(*ta);
-            } catch (TypeApplicationException e) {
-                value tas = if (ta.empty) then "" else ta.string.replaceFirst("[", "<").replaceLast("]", ">");
-                throw ParseError("erronerous type instantiation ``d.qualifiedName+tas``: ``e.message``");
-            }
-            while (tokenizer.isType(dtDot)) {
-                value mt = typeName(tokenizer);
-                value mta = if (tokenizer.current.type == dtLt) then typeArguments(tokenizer) else [];
-                Member<Nothing,ClassOrInterface<Anything>>? k;
-                try {
-                    k = x.getClassOrInterface<Nothing, ClassOrInterface<>>(mt, *mta);
-                } catch (TypeApplicationException e) {
-                    value tas = if (mta.empty) then "" else mta.string.replaceFirst("[", "<").replaceLast("]", ">");
-                    throw ParseError("erronerous type instantiation ``mt+tas.string``: ``e.message``");
-                    
-                }
-                if (is ClassOrInterface<Anything> k) {
-                    x = k;
-                } else if (exists k){
-                    throw ParseError("member type neither class nor interface: ``mt`` member of ``x.declaration.qualifiedName`` is a ``k``");
-                } else {
-                    throw ParseError("member type does not exist: ``mt`` member of ``x.declaration.qualifiedName``");
-                }
-            }
-            return x;
+    """intersectionType ::= unionType ('&' intersectionType) ;"""
+    Type<> parseIntersectionType(Tokenizer tokenizer) {
+        variable Type<> result = primaryType(tokenizer);
+        if (tokenizer.isType(dtAnd)) {
+            Type<> u2 = primaryType(tokenizer);
+            result = result.intersection(u2);
+        }
+        return result;
+    }
+    
+    // PrimaryType: AtomicType | OptionalType | SequenceType | CallableType
+    //
+    // OptionalType: PrimaryType '?'
+    // SequenceType: PrimaryType "[" "]"
+    // CallableType: PrimaryType "(" TypeList? | SpreadType ")"
+    Type<> primaryType(Tokenizer tokenizer) {
+        Type<> t = atomicType(tokenizer);
+        // TODO need backtracking here
+        if (optionalAbbreviation && tokenizer.current.type == dtQn) {
+            return optionalType(tokenizer, t);
+        } else if (sequenceAbbreviation && tokenizer.current.type == dtLsq) {
+            return sequenceType(tokenizer, t);
+        } else if (callableAbbreviation && tokenizer.current.type == dtLparen) {
+            return callableType(tokenizer, t);
         } else {
-            if (ta.empty,
-                !tokenizer.isType(dtDot)) {
-                return d;
+            return t;
+        }
+        
+    }
+    
+    // OptionalType: PrimaryType '?'
+    Type<> optionalType(Tokenizer tokenizer, Type<> baseType) {
+        tokenizer.expect(dtQn);
+        return baseType.union(`Null`);
+    }
+    
+    // SequenceType: PrimaryType "["
+    Type<> sequenceType(Tokenizer tokenizer, Type<> elementType) {
+        tokenizer.expect(dtLsq);
+        tokenizer.expect(dtRsq);
+        return `interface Sequential`.interfaceApply<Anything>(elementType);
+    }
+    
+    // CallableType: PrimaryType "(" TypeList? | SpreadType ")"
+    Type<> callableType(Tokenizer tokenizer, Type<> returnType) {
+        tokenizer.expect(dtLparen);
+        if (tokenizer.current.type == dtStar) {
+            // SpreadType would imply 
+            tokenizer.consume();// *
+            value spread = parseUnionType(tokenizer);
+            tokenizer.expect(dtRparen);
+            //assert(is Type<Anything[]> spread);
+            return `interface Callable`.interfaceApply<Anything>(*[returnType, spread]);
+        } else {
+            // TypeList?
+            Type<> argumentTuple;
+            if (tokenizer.current.type == dtRparen) {
+                tokenizer.consume();
+                argumentTuple = `Empty`;
+            } else {
+                value typeList = this.typeList(tokenizer);
+                tokenizer.expect(dtRparen);
+                // TODO make a tuple from the listed type
+                argumentTuple = typeList; 
             }
-            throw ParseError("unsupported generic declaration: ``d``");
+            return `interface Callable`.interfaceApply<Anything>(*[returnType, argumentTuple]);
+        }
+    }
+    
+    
+    // AtomicType: QualifiedType | EmptyType | TupleType | IterableType
+    // EmptyType: "[" "]"
+    // TupleType: "[" TypeList "]" | PrimaryType "[" DecimalLiteral "]"
+    // IterableType: "{" UnionType ("*"|"+") "}"
+    Type<> atomicType(Tokenizer tokenizer) {
+        if (tokenizer.current.type == dtLsq) {
+            //tokenizer.consume();
+            // TODO need lookAhead here
+            if (tokenizer.current.type == dtRsq) {
+                if (emptyAbbreviation) {
+                    return `Empty`;
+                } else {
+                    throw ParseError("empty abbreviation not supported");
+                }
+            } else {
+                if (tupleAbbreviation) {
+                    return tupleType(tokenizer);
+                } else {
+                    throw ParseError("tuple abbreviation not supported");
+                }
+            }
+        } else if (iterableAbbreviation && tokenizer.current.type == dtLbr) {
+            return iterableType(tokenizer);
+        } else {
+            // TODO Could be either QualifiedType or TupleType with a 
+            // DecimalLiteral
+            return qualifiedType(tokenizer);
+        }
+    }
+    // IterableType: "{" UnionType ("*"|"+") "}"
+    Type<> iterableType(Tokenizer tokenizer) {
+        tokenizer.expect(dtLbr);
+        value iteratedType = parseUnionType(tokenizer);
+        Type<> absentType;
+        if (tokenizer.current.type == dtStar) {
+            tokenizer.consume();
+            absentType = `Null`;
+        } else if (tokenizer.current.type == dtPlus) {
+            tokenizer.consume();
+            absentType = `Nothing`;
+        } else {
+            throw ParseError("badly formed iterable type");
+        }
+        tokenizer.expect(dtRbr);
+        return `interface Iterable`.interfaceApply<Anything>(*[iteratedType, absentType]);
+    }
+    
+    // TupleType: "[" TypeList "]" | PrimaryType "[" DecimalLiteral "]"
+    Type<> tupleType(Tokenizer tokenizer) {
+        if (tokenizer.current.type == dtLsq) {
+            // TODO TypeList
+            tokenizer.consume();
+            value typeList = this.typeList(tokenizer);
+            tokenizer.expect(dtRsq);
+            return typeList;
+        } else {
+            value elementType = primaryType(tokenizer);
+            tokenizer.expect(dtLsq);
+            variable value d = tokenizer.expect(dtDigit);
+            assert(exists c1 = d.first); 
+            variable value int = '0'.offset(c1);
+            while (tokenizer.current.type == dtDigit) {
+                d = tokenizer.expect(dtDigit);
+                assert(exists c2 = d.first); 
+                int = 10 * int + '0'.offset(c2);
+            }
+            tokenizer.expect(dtRsq);
+            variable Type<> t = `Empty`;
+            while (int > 0) {
+                t = `class Tuple`.apply(*[elementType, elementType, t]);
+                int--;
+            }
+            return t;
+        }
+        
+    }
+    
+    // TypeList: (DefaultedType ",")* (DefaultedType | VariadicType)
+    // DefaultedType: Type "="?
+    // VariadicType: UnionType ("*" | "+")
+    Type<Anything> typeList(Tokenizer tokenizer) {
+        // TODO Diff between a type and a UnionType is a Type could be an entry type
+        // So we can parse DefaultedType using UnionType, and handle Entry's by hand
+        // Thus avoiding backtracking 
+        variable value index = tokenizer.index;
+        value types = ArrayList<Type<>->Boolean>();
+        variable value t = defaultedType(tokenizer);
+        variable value hasDefaults = t.item;
+        types.add(t);
+        while (tokenizer.current.type == dtComma) {
+            tokenizer.consume();
+            index = tokenizer.index;
+            value t2 = defaultedType(tokenizer);
+            hasDefaults = t2.item || hasDefaults;
+            types.add(t2);
+        }
+        // TODO backtrack because the last matched type was a DefaultedType, 
+        // but maybe a VariadicType would've matched more
+        Integer defaultedIndex = tokenizer.index;
+        tokenizer.setIndex(index);
+        variable Type<> rest;
+        variable Type<> element;
+        if (exists v = variadicType(tokenizer)) {
+            types.deleteLast();
+            if (v.item) {
+                if (hasDefaults) {
+                    throw ParseError("nonempty variadic element must occur after defaulted elements in a tuple type");
+                }
+                rest = `interface Sequence`.interfaceApply<Anything>(v.key);
+            } else {
+                rest = `interface Sequential`.interfaceApply<Anything>(v.key);
+            }
+            element = v.key;
+        } else {
+            // variadicType didn't match, so it *was* a defaulted type
+            tokenizer.setIndex(defaultedIndex);
+            rest = `Empty`;
+            element = `Nothing`;
+        }
+        variable Type<> result = rest;
+        //variable value unions = ArrayList{rest->element};
+        variable Boolean seenNonDefault = false;
+        for (first->defaulted in types.reversed) {
+            element = first.union(element);
+            result = `class Tuple`.classApply<Anything,Nothing>(element, first, result);
+            if (defaulted) {
+                if (seenNonDefault) {
+                    throw ParseError("required element must occur after defaulted elements in a tuple type");
+                }
+                result = defaulted then result.union(`Empty`) else result;
+            } else {
+                seenNonDefault = true;
+            }
+        }
+        /*
+        variable Type<> result = `Nothing`;
+        for (r->_ in unions) {
+            result = r.union(result);
+        }
+        */
+        return result;
+    }
+    
+    // DefaultedType: Type "="?
+    Type<>->Boolean defaultedType(Tokenizer tokenizer) {
+        variable Type<> t = parseType(tokenizer);
+        if (tokenizer.current.type == dtEquals) {
+            tokenizer.consume();
+            return t->true;
+        }
+        return t->false;
+    }
+    
+    <Type<>->Boolean>? variadicType(Tokenizer tokenizer) {
+        variable Type<> t = parseUnionType(tokenizer);
+        if (tokenizer.current.type == dtStar) {
+            tokenizer.consume();
+            return t->false;
+        } else if (tokenizer.current.type == dtPlus) {
+            tokenizer.consume();
+            return t->true;
+        }
+        return null;
+    }
+    
+    """simpleType ::= declaration typeArguments? ('.' typeName typeArguments?)* ;"""
+    // QualifiedType: BaseType ( '.' TypeNameWithArguments) *
+    Type<> qualifiedType(Tokenizer tokenizer) {
+        variable Type<>|ClassOrInterface<> t = parseBaseType(tokenizer);
+        
+        while (tokenizer.current.type == dtDot) {
+            tokenizer.isType(dtDot);
+            if (is ClassOrInterface<> x=t) {
+                t = parseTypeNameWithArguments_qualifiedType(tokenizer, x);
+            }
+        }
+        return t;
+        
+    }
+    
+    // TypeNameWithArguments: TypeName TypeArguments?
+    ClassOrInterface<> parseTypeNameWithArguments_qualifiedType(Tokenizer tokenizer, ClassOrInterface<Anything> qualifyingType) {
+        value mt = parseTypeName(tokenizer);
+        value mta = if (tokenizer.current.type == dtLt) then parseTypeArguments(tokenizer) else [];
+        Member<Nothing,ClassOrInterface<Anything>>? k;
+        try {
+            k = qualifyingType.getClassOrInterface<Nothing, ClassOrInterface<>>(mt, *mta);
+        } catch (TypeApplicationException e) {
+            value tas = if (mta.empty) then "" else mta.string.replaceFirst("[", "<").replaceLast("]", ">");
+            throw ParseError("erronerous type instantiation ``mt+tas.string``: ``e.message``");
+        }
+        
+        if (is ClassOrInterface<Anything> k) {
+            return k;
+        } else if (exists k){
+            throw ParseError("member type neither class nor interface: ``mt`` member of ``qualifyingType.declaration.qualifiedName`` is a ``k``");
+        } else {
+            throw ParseError("member type does not exist: ``mt`` member of ``qualifyingType.declaration.qualifiedName``");
+        }
+    }
+    
+    // TypeNameWithArguments: TypeName TypeArguments?
+    Type<> parseTypeNamedWithArguments_BaseType(Tokenizer tokenizer, Package? p) {
+        value t = parseTypeName(tokenizer);
+        if (exists d = lookup(p, t)) {
+            /**/
+            Type<>[] ta = if (tokenizer.current.type == dtLt) then parseTypeArguments(tokenizer) else [];
+            
+            if (is ClassOrInterfaceDeclaration d) {
+                variable ClassOrInterface<> x;
+                try {
+                    x = d.apply<Anything>(*ta);
+                } catch (TypeApplicationException e) {
+                    value tas = if (ta.empty) then "" else ta.string.replaceFirst("[", "<").replaceLast("]", ">");
+                    throw ParseError("erronerous type instantiation ``d.qualifiedName+tas``: ``e.message``");
+                }
+                return x;
+            } else {
+                if (ta.empty,
+                    !tokenizer.isType(dtDot)) {
+                    return d;
+                }
+                throw ParseError("unsupported generic declaration: ``d``");
+            }
+        } else {
+            throw ParseError("type does not exist: '``t``' in '``p else scope``'" );
         }
     }
     
@@ -171,24 +454,49 @@ shared class TypeParser(
         }
     }
     
-    """declaration ::= packageName '::' typeName ;"""
-    Type<>|ClassOrInterfaceDeclaration declaration(Tokenizer tokenizer) {
-        
+    Package? parsePackageQualifier(Tokenizer tokenizer) {
         Package? p = if (allowFq) then packageName(tokenizer) else null;
-        value t = typeName(tokenizer);
-        if (exists r = lookup(p, t)) {
-            return r;
+        return p;
+    }
+    
+    """declaration ::= packageName '::' typeName ;"""
+    //  BaseType: PackageQualifier? TypeNameWithArguments | GroupedType
+    Type<> parseBaseType(Tokenizer tokenizer) {
+        if (tokenizer.current.type == dtLt) {
+            //GroupedType
+            return parseGroupedType(tokenizer);
         } else {
-            throw ParseError("type does not exist: '``t``' in '``p else scope``'" );
+            // PackageQualifier?
+            Package? p = parsePackageQualifier(tokenizer);
+            return parseTypeNamedWithArguments_BaseType(tokenizer, p);
         }
     }
     
+    // GroupedType: '<' Type '>
+    Type<> parseGroupedType(Tokenizer tokenizer) {
+        tokenizer.expect(dtLt);
+        value result = parseType(tokenizer);
+        tokenizer.expect(dtGt);
+        return result;
+    }
+    
+    // TypeArgument: Variance Type
+    function parseTypeArgument(Tokenizer tokenizer) {
+        if (tokenizer.current.type == dtIn
+            || tokenizer.current.type == dtOut) {
+            throw ParseError("use-site variance not supported in the metamodel");
+        }
+        value t = parseType(tokenizer);
+        return t;
+    }
+    
     """typeArgments := '<' intersectionType (',' intersectionType)* '>';"""
-    Type<>[] typeArguments(Tokenizer tokenizer) {
+    // TypeArguments: "<" ((TypeArgument ",")* TypeArgument)? ">" 
+    Type<>[] parseTypeArguments(Tokenizer tokenizer) {
         tokenizer.expect(dtLt);
         variable Type<>[] result = [];
         while(true) {
-            value t = intersectionType(tokenizer);
+            value t=parseTypeArgument(tokenizer);
             result = result.withTrailing(t);
             if (!tokenizer.isType(dtComma)) {
                 break;
@@ -199,7 +507,8 @@ shared class TypeParser(
     }
     
     """typeName ::= uident;"""
-    String typeName(Tokenizer tokenizer) {
+    // TypeName : UIdentifier
+    String parseTypeName(Tokenizer tokenizer) {
         if (tokenizer.current.type == dtUpper
             ||tokenizer.current.type == dtLower) {
             return tokenizer.consume();
@@ -275,4 +584,11 @@ shared class TypeParser(
    
    """
 see(`function parseModel`)
-shared Type<>|ParseError parseType(String t, Imports imports=[]) => TypeParser(imports).parse(t);
+shared Type<>|ParseError parseType(String t, 
+    Imports imports=[],
+    Boolean optionalAbbreviation=true,
+    Boolean entryAbbreviation=true) => TypeParser { 
+        imports = imports; 
+        optionalAbbreviation = optionalAbbreviation; 
+        entryAbbreviation = entryAbbreviation;
+    }.parse(t);

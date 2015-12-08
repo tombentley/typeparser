@@ -3,4 +3,6 @@
  metamodels."
 by("Tom Bentley")
 license("http://www.apache.org/licenses/LICENSE-2.0")
-module com.github.tombentley.typeparser "1.0.2" {}
+module com.github.tombentley.typeparser "1.0.2" {
+    import ceylon.collection "1.2.1";
+}
