@@ -105,7 +105,7 @@ shared class TypeParser(
             tokenizer.expect(dtEoi);
             return result;
         } catch (ParseError e) {
-            throw e;
+            return e;
         }
     }
     
@@ -209,10 +209,10 @@ shared class TypeParser(
     // IterableType: "{" UnionType ("*"|"+") "}"
     Type<> atomicType(Tokenizer tokenizer) {
         if (tokenizer.current.type == dtLsq) {
-            //tokenizer.consume();
-            // TODO need lookAhead here
-            if (tokenizer.current.type == dtRsq) {
+            if (tokenizer.lookAhead(1).type == dtRsq) {
                 if (emptyAbbreviation) {
+                    tokenizer.consume();// [
+                    tokenizer.consume();// ]
                     return `Empty`;
                 } else {
                     throw ParseError("empty abbreviation not supported");

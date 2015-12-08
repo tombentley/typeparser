@@ -153,6 +153,21 @@ class Tokenizer(input) {
         return current_;
     }
     
+    shared Token lookAhead(variable Integer n) {
+        assert(n >= 0);
+        if (n == 0) {
+            return current;
+        }
+        value savedIndex = ii;
+        while (n-- > 0) {
+            consume();
+        }
+        value result = current;
+        this.ii = savedIndex;
+        this.current_ = at(ii);
+        return result;
+    }
+    
     "Return the current token, moving on to the next token."
     shared String consume() {
         value result = current.token;

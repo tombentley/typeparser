@@ -185,6 +185,19 @@ shared void testParseOptionalAbbrev() {
 }
 
 test
+shared void testParseEmptyAbbrev() {
+    Imports imports = [`package`, `package ceylon.language`];
+    function pt(String t) => parseType { 
+        t = t; 
+        imports = imports; 
+    };
+    assertEquals(pt("[]"), `[]`);
+    assertEquals(pt("[]?"), `[]?`);
+    assertEquals(pt("[](*[])"), `[](*[])`);
+    
+}
+
+test
 shared void testParseSequenceAbbrev() {
     Imports imports = [`package`, `package ceylon.language`];
     function pt(String t) => parseType { 
@@ -387,6 +400,7 @@ shared void testParseCallable() {
     assertEquals(pt("String(Boolean,Integer=)"), `String(Boolean,Integer=)`);
     assertEquals(pt("String(Boolean=,Integer=)"), `String(Boolean=,Integer=)`);
     
+    assertEquals(pt("String(*[])"), `String(*[])`);
     assertEquals(pt("String(*[Boolean,Integer])"), `String(*[Boolean,Integer])`);
     assertEquals(pt("String(*Boolean[])"), `String(*Boolean[])`);
     assertEquals(pt("String(*Boolean[2])"), `String(*Boolean[2])`);
