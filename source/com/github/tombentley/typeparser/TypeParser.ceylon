@@ -34,14 +34,14 @@ import ceylon.language.meta.model {
    Fully-qualified type expression are not defined by the
    Ceylon language specification, because in Ceylon source code
    type expressions always use `import`ed type names, not fully-qualified ones, 
-   but the syntax is pretty much as you'd expect. 
-   
-   For example:
+   but the syntax is pretty much as you'd expect. For example:
    
        ceylon.language::String
        ceylon.language::true     // type Type, not the Value
        ceylon.collection::MutableSet<ceylon.json::Object>
-       
+   
+   By default the parser accepts all the usual type abbreviations, but this 
+   can be configured via the class parameters.
 
    """
 shared class TypeParser(
