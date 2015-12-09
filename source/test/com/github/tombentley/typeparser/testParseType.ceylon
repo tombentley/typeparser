@@ -8,6 +8,9 @@ import com.github.tombentley.typeparser {
     ParseError,
     Imports
 }
+import ceylon.collection{
+    ArrayList
+}
 
 interface Foo {
 }
@@ -519,6 +522,11 @@ shared void testParseCallable() {
     assertEquals(e.message, "callable abbreviation not permitted");
 }
 
+test
+shared void testArrayListWithUnion() {
+    assertEquals(parseType("ceylon.collection::ArrayList<ceylon.language::Integer|ceylon.language::String|ceylon.language::Boolean>"), 
+        `ArrayList<Integer|String|Boolean>`);
+}
 
 
 // TODO test for precedence

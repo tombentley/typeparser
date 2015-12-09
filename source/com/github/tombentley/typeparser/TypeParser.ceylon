@@ -129,7 +129,7 @@ shared class TypeParser(
     """unionType ::= simpleType ('|' intersectionType) ;"""
     Type<> parseUnionType(Tokenizer tokenizer) {
         variable Type<> result = parseIntersectionType(tokenizer);
-        if (tokenizer.isType(dtOr)) {
+        while (tokenizer.isType(dtOr)) {
             Type<> u2 = parseIntersectionType(tokenizer);
             result = result.union(u2);
         }
@@ -139,7 +139,7 @@ shared class TypeParser(
     """intersectionType ::= unionType ('&' intersectionType) ;"""
     Type<> parseIntersectionType(Tokenizer tokenizer) {
         variable Type<> result = primaryType(tokenizer);
-        if (tokenizer.isType(dtAnd)) {
+        while (tokenizer.isType(dtAnd)) {
             Type<> u2 = primaryType(tokenizer);
             result = result.intersection(u2);
         }
