@@ -14,14 +14,28 @@ import ceylon.language.meta.model {
  fully-qualified using [[type ceylon.language.meta::type]] 
  (i.e. `type(t).string`) will probably be quicker."
 shared class TypeFormatter(Imports imports=[],
-    Boolean abbreviateSequential=true,
-    Boolean abbreviateSequence=true,
-    Boolean abbreviateEmpty=true,
-    Boolean abbreviateIterable=true,
-    Boolean abbreviateTuple=true,
-    Boolean abbreviateEntry=true,
-    Boolean abbreviateOptional=true,
-    Boolean abbreviateCallable=true) {
+    optionalAbbreviation=true,
+    entryAbbreviation=true,
+    sequenceAbbreviation=true,
+    tupleAbbreviation=true,
+    callableAbbreviation=true,
+    iterableAbbreviation=true,
+    emptyAbbreviation=true) {
+    
+    "Whether to support optional abbreivation syntax `X?`."
+    Boolean optionalAbbreviation;
+    "Whether to support entry abbreivation syntax `X->Y`."
+    Boolean entryAbbreviation;
+    "Whether to support sequential abbreivation syntax `X[]`, `[Y*]` and `[Z+]`."
+    Boolean sequenceAbbreviation;
+    "Whether to support tuple abbreivation syntax `[X,Y]` and `X[3]`."
+    Boolean tupleAbbreviation;
+    "Whether to support callable abbreivation syntax `X(Y)`."
+    Boolean callableAbbreviation;
+    "Whether to support iterable abbreivation syntax `{X+}` and `{Y*}`."
+    Boolean iterableAbbreviation;
+    "Whether to support empty abbreivation syntax `[]`."
+    Boolean emptyAbbreviation;
     
     Boolean deterministic = true;
     Scope scope = Scope(imports);
@@ -147,7 +161,7 @@ shared class TypeFormatter(Imports imports=[],
     "Appends the formatting for the given type to the given string builder."
     shared void formatTo(Type<> type, StringBuilder sb) {
         if (is ClassOrInterface<> type) {
-            if (abbreviateSequential && 
+            if (tupleAbbreviation && 
                     type.declaration == `interface Sequential`,
                     exists elementTa = type.typeArgumentList[0]) {
                 value parens = elementTa is ClassOrInterface<Entry<Object,Anything>>;
@@ -160,18 +174,18 @@ shared class TypeFormatter(Imports imports=[],
                 }
                 sb.append("[]");
                 return;
-            } else if (abbreviateEmpty && 
+            } else if (emptyAbbreviation && 
                     type.declaration == `interface Empty`) {
                 sb.append("[]");
                 return;
-            } else if (abbreviateSequence && 
+            } else if (sequenceAbbreviation && 
                     type.declaration == `interface Sequence`) {
                 assert(exists elementTa = type.typeArgumentList[0]);
                 sb.append("[");
                 formatTo(elementTa, sb);
                 sb.append("+]");
                 return;
-            } else if (abbreviateIterable && 
+            } else if (iterableAbbreviation && 
                     type.declaration == `interface Iterable`,
                     exists absentTa = type.typeArgumentList[1],
                     absentTa.exactly(`Null`) || absentTa.exactly(`Nothing`)) {
@@ -184,7 +198,7 @@ shared class TypeFormatter(Imports imports=[],
                     sb.append("+}");
                 }
                 return;
-            } else if (abbreviateEntry && 
+            } else if (entryAbbreviation && 
                     type.declaration == `class Entry`,
                     exists keyTa = type.typeArgumentList[0],
                     exists itemTa = type.typeArgumentList[1],
@@ -194,7 +208,7 @@ shared class TypeFormatter(Imports imports=[],
                 sb.append("->");
                 formatTo(itemTa, sb);
                 return;
-            } else if (abbreviateTuple, 
+            } else if (tupleAbbreviation, 
                     is ClassOrInterface<Tuple<Anything,Anything,Anything[]>> type) {
                 // Iterate here, instead of recurse?
                 StringBuilder sb2 = StringBuilder();
@@ -226,7 +240,7 @@ shared class TypeFormatter(Imports imports=[],
                     sb.append("]");
                     return;
                 }
-            } else if (abbreviateEntry && 
+            } else if (entryAbbreviation && 
                     type.declaration == `interface Callable`,
                     exists parametersTa = type.typeArgumentList[1],
                     is ClassOrInterface<Tuple<Anything,Anything,Anything[]>> parametersTa) {
@@ -279,7 +293,7 @@ shared class TypeFormatter(Imports imports=[],
             }
         
         } else if (is UnionType<> type) {
-            if (abbreviateOptional,
+            if (optionalAbbreviation,
                 type.caseTypes.size == 2,
                 `Null` in type.caseTypes,
                 exists t0 = type.caseTypes[0],
@@ -301,7 +315,7 @@ shared class TypeFormatter(Imports imports=[],
                 }
                 sb.append("?");
                 return;
-            } else if (abbreviateTuple,
+            } else if (tupleAbbreviation,
                 `[]` in type.caseTypes,
                 exists tup=oneTuple(type)) {
                 // [X=] means []|[X] so any union containing both [] and a 1-tuple

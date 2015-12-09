@@ -8,14 +8,13 @@ import com.github.tombentley.typeparser {
 test
 shared void testTypeFormatter() {
     TypeFormatter tf = TypeFormatter{
-        abbreviateSequence = false;
-        abbreviateSequential = false;
-        abbreviateEmpty = false;
-        abbreviateIterable = false;
-        abbreviateTuple = false;
-        abbreviateEntry = false;
-        abbreviateCallable = false;
-        abbreviateOptional = false;
+        sequenceAbbreviation = false;
+        emptyAbbreviation = false;
+        iterableAbbreviation = false;
+        tupleAbbreviation = false;
+        entryAbbreviation = false;
+        callableAbbreviation = false;
+        optionalAbbreviation = false;
     };
     assertEquals(tf.format(`Integer`), "ceylon.language::Integer");
     assertEquals(tf.format(`String`), "ceylon.language::String");
@@ -50,14 +49,13 @@ shared void testTypeFormatter() {
 test
 shared void testTypeFormatterImportString() {
     TypeFormatter tf = TypeFormatter{
-        abbreviateSequence = false;
-        abbreviateSequential = false;
-        abbreviateEmpty = false;
-        abbreviateIterable = false;
-        abbreviateTuple = false;
-        abbreviateEntry = false;
-        abbreviateCallable = false;
-        abbreviateOptional = false;
+        sequenceAbbreviation = false;
+        emptyAbbreviation = false;
+        iterableAbbreviation = false;
+        tupleAbbreviation = false;
+        entryAbbreviation = false;
+        callableAbbreviation = false;
+        optionalAbbreviation = false;
         imports = [`class String`];
     };
     assertEquals(tf.format(`Integer`), "ceylon.language::Integer");
@@ -88,14 +86,13 @@ shared void testTypeFormatterImportString() {
 test
 shared void testTypeFormatterImportLanguage() {
     TypeFormatter tf = TypeFormatter{
-        abbreviateSequence = false;
-        abbreviateSequential = false;
-        abbreviateEmpty = false;
-        abbreviateIterable = false;
-        abbreviateTuple = false;
-        abbreviateEntry = false;
-        abbreviateCallable = false;
-        abbreviateOptional = false;
+        sequenceAbbreviation = false;
+        emptyAbbreviation = false;
+        iterableAbbreviation = false;
+        tupleAbbreviation = false;
+        entryAbbreviation = false;
+        callableAbbreviation = false;
+        optionalAbbreviation = false;
         imports = [`package ceylon.language`];
     };
     assertEquals(tf.format(`Integer`), "Integer");
@@ -133,13 +130,12 @@ shared void testTypeFormatterImportLanguage() {
 test
 shared void testTypeFormatterAbbrev() {
     TypeFormatter tf = TypeFormatter{
-        abbreviateSequence = true;
-        abbreviateSequential = true;
-        abbreviateIterable = true;
-        abbreviateTuple = true;
-        abbreviateEntry = true;
-        abbreviateCallable = true;
-        abbreviateOptional = true;
+        sequenceAbbreviation = true;
+        iterableAbbreviation = true;
+        tupleAbbreviation = true;
+        entryAbbreviation = true;
+        callableAbbreviation = true;
+        optionalAbbreviation = true;
     };
     assertEquals(tf.format(`Integer`), "ceylon.language::Integer");
     assertEquals(tf.format(`String`), "ceylon.language::String");
