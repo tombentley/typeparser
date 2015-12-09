@@ -13,7 +13,7 @@ import ceylon.language.meta.model {
  If you don't need abbreviations and do want all types to be 
  fully-qualified using [[type ceylon.language.meta::type]] 
  (i.e. `type(t).string`) will probably be quicker."
-shared class TypeFormatter(Imports imports=[],
+shared class TypeFormatter(imports=[],
     optionalAbbreviation=true,
     entryAbbreviation=true,
     sequenceAbbreviation=true,
@@ -21,6 +21,9 @@ shared class TypeFormatter(Imports imports=[],
     callableAbbreviation=true,
     iterableAbbreviation=true,
     emptyAbbreviation=true) {
+    
+    "The imports"
+    shared Imports imports;
     
     "Whether to support optional abbreivation syntax `X?`."
     Boolean optionalAbbreviation;
