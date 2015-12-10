@@ -27,6 +27,9 @@ class Scope(imports=[]/*, allowFq = imports == []*/) {
     Imports imports;
     
     shared ClassOrInterfaceDeclaration|Type<>? find(String name) {
+        // XXX it might be worth memoizing the results form this method, 
+        // to avoid a linear scan for things (e.g. Integer, String) 
+        // which are searched for repeatedly.
         for (s in imports) {
             switch (s)
             case (is Package) {

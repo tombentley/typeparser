@@ -16,6 +16,22 @@ object baz satisfies Baz<String> {}
 shared Integer val = 3;
 shared Integer fun() => 3;
 
+interface Diamond {
+    shared formal Anything m();
+}
+
+interface Left<T> satisfies Diamond {
+    shared actual formal T m();
+}
+
+interface Right satisfies Diamond {
+    shared actual formal Identifiable m();
+}
+
+interface Join<T> satisfies Left<Object>&Right {
+    shared actual formal Set<T>&Identifiable m();
+}
+
 class Gee {
     shared new () {}
     shared new other() {}
@@ -82,6 +98,12 @@ test
 shared void testParseModelConstructor() {
     assertEquals(parseModel("test.com.github.tombentley.typeparser::Gee.other"), `Gee.other`);
     assertEquals(parseModel("ceylon.language::Array<ceylon.language::String>.ofSize"), `Array<String>.ofSize`);
+}
+
+test
+shared void testParseModelIntersection() {
+    assertEquals(parseModel("<test.com.github.tombentley.typeparser::Left<ceylon.language::Identifiable>&test.com.github.tombentley.typeparser::Right>.m"), 
+        `<Left<Identifiable>&Right>.m`);
 }
 
 // TODO negative tests

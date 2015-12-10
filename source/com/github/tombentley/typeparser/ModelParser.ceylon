@@ -37,6 +37,10 @@ import ceylon.language.meta.model {
 class ModelParser() {
     value modulesList = modules.list;
     
+    // TODO need to support imports (but actually it's a different alias)
+    // and type abbrevs
+    // and type grouping
+    
     """input ::= intersectionType ;"""
     shared Model|Type<>|ParseError parse(String input) {
         try {
@@ -69,10 +73,10 @@ class ModelParser() {
     
     """intersectionType ::= simpleType ('&' simpleType) ;"""
     Model|Type<> intersectionModel(Tokenizer tokenizer) {
-        variable value result = qualifiedModel(tokenizer);
+        variable value result = baseModel(tokenizer);
         while (tokenizer.isType(dtAnd)) {
             if (is Type<> u1=result) {
-                value u2 = qualifiedModel(tokenizer);
+                value u2 = baseModel(tokenizer);
                 if (is Type<> u2) {
                     result = u1.intersection(u2);
                 } else {
@@ -85,7 +89,16 @@ class ModelParser() {
         return result;
     }
     
-    
+    Model|Type<> baseModel(Tokenizer tokenizer) {
+        if (tokenizer.current.type == dtLt) {
+            tokenizer.consume();
+            value result = unionModel(tokenizer);
+            tokenizer.expect(dtGt);
+            return result;
+        } else {
+            return qualifiedModel(tokenizer);
+        }
+    }
     
     """qualifiedModel ::= qualifiedDeclaration typeArguments? ('.' declarationName  typeArguments?)* ;"""
     Model|Type<> qualifiedModel(Tokenizer tokenizer) {

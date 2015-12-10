@@ -233,3 +233,5 @@ shared void testTypeFormatterAbbrev() {
     assertEquals(tf.format(`<Resource|Null>&Usable`), "ceylon.language::Resource&ceylon.language::Usable");// type reduction!!
     // TODO intersection w/ entry (will reduce) 
 }
+
+// TODO test with "import alias"
