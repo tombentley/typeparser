@@ -6,10 +6,21 @@ import ceylon.test {
 import com.github.tombentley.typeparser {
     parseType,
     ParseError,
-    Imports
+    Imports,
+    TypeFormatter
 }
 import ceylon.collection{
     ArrayList
+}
+import ceylon.language.meta {
+    type
+}
+import test.com.github.tombentley.typeparser.nonshared {
+    ClassInNonshared,
+    leakNonsharedClassType
+}
+import ceylon.language.meta.model {
+    Type
 }
 
 interface Foo {
@@ -528,6 +539,41 @@ shared void testArrayListWithUnion() {
         `ArrayList<Integer|String|Boolean>`);
 }
 
+test 
+shared void testRoundTripType() {
+    String t = TypeFormatter().format(type(`class String`));
+    print(t);
+    assert(!is ParseError rt=parseType(t));
+}
+
+test 
+shared void testRoundTripClassInNonshared() {
+    String t = TypeFormatter().format(`ClassInNonshared`);
+    assertEquals(t, "test.com.github.tombentley.typeparser.nonshared::ClassInNonshared");
+    assertEquals(parseType(t), `ClassInNonshared`);
+}
+
+test 
+shared void testRoundTripNonsharedClassInNonshared() {
+    String t = TypeFormatter().format(leakNonsharedClassType);
+    assertEquals(t, "test.com.github.tombentley.typeparser.nonshared::NonsharedClassInNonshared");
+    assert(!is ParseError rt=parseType(t));
+}
+
+test
+shared void testRoundTripTypesFromNonDependentModule() {
+    assert(is Type<> sc=parseType("indirect::SharedClass"));
+    assertEquals(TypeFormatter().format(sc), "indirect::SharedClass");
+    
+    assert(is Type<> nc=parseType("indirect::NonsharedClass"));
+    assertEquals(TypeFormatter().format(nc), "indirect::NonsharedClass");
+    
+    assert(is Type<> nsc=parseType("indirect.nonshared::SharedClass"));
+    assertEquals(TypeFormatter().format(nsc), "indirect.nonshared::SharedClass");
+    
+    assert(is Type<> nnc=parseType("indirect.nonshared::NonsharedClass"));
+    assertEquals(TypeFormatter().format(nnc), "indirect.nonshared::NonsharedClass");
+}
 
 // TODO test for precedence
 // TODO negative tests

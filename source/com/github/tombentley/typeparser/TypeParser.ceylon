@@ -573,10 +573,13 @@ shared class TypeParser(
             }
         }
         if (exists m=mod) {
+            
             value pname = tokenizer.input.measure(start, tokenizer.index-start-2);
-            if(exists p=m.findPackage(pname)) {
+            if (exists p=m.findImportedPackage(pname)) {
                 return p;
-            } else {
+            } /*else if(exists p=m.findPackage(pname)) {
+                return p;
+            } */else {
                 throw ParseError("package not found: '``pname``'");
             }
         } else {
