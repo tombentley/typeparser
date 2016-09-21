@@ -38,5 +38,5 @@
 by("Tom Bentley")
 license("http://www.apache.org/licenses/LICENSE-2.0")
 module com.github.tombentley.typeparser "1.0.3" {
-    import ceylon.collection "1.2.1";
+    import ceylon.collection "1.3.0";
 }
