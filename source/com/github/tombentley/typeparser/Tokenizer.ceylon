@@ -126,11 +126,11 @@ class Tokenizer(input) {
                     return ident(dtLower, char.string, ii);
                 } else if (char.uppercase) {
                     return ident(dtUpper, char.string, ii);
-                } else if (char =="\\") {
+                } else if (char =='\\') {
                     if (exists char2 = input[ii + 1]) {
-                        if (char2 == "I") {
+                        if (char2 == 'I') {
                             return ident(dtUpper, char2.string, ii);
-                        } else if (char2 == "i") {
+                        } else if (char2 == 'i') {
                             return ident(dtLower, char2.string, ii);
                         } else {
                             throw ParseError("tokenization error, expected \\i or \\I, not :\\``char2`` at index ``ii``: ``input``");
